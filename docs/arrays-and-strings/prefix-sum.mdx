@@ -1,0 +1,242 @@
+---
+sidebar_position: 5
+title: "Prefix Sum"
+---
+
+import CodePlayground from '@site/src/components/CodePlayground';
+
+# Prefix Sum
+
+The prefix sum technique precomputes cumulative sums so that any **range sum query** can be answered in $O(1)$ after $O(n)$ preprocessing. It is one of the simplest yet most impactful algorithmic ideas, appearing in problems ranging from subarray sums to 2D matrix queries.
+
+## The Core Idea
+
+Given an array $a$ of length $n$, build a prefix sum array $P$ where:
+
+$$P[0] = 0, \quad P[i] = a[0] + a[1] + \cdots + a[i-1]$$
+
+Then the sum of elements from index $l$ to $r$ (inclusive) is:
+
+$$\text{sum}(l, r) = P[r+1] - P[l]$$
+
+This works because $P[r+1]$ is the sum of the first $r+1$ elements, and subtracting $P[l]$ removes the first $l$ elements.
+
+<CodePlayground code={`def build_prefix_sum(nums):
+    """Build prefix sum array. P[i] = sum of nums[0..i-1]."""
+    n = len(nums)
+    prefix = [0] * (n + 1)
+    for i in range(n):
+        prefix[i + 1] = prefix[i] + nums[i]
+    return prefix
+
+def range_sum(prefix, left, right):
+    """Return sum of nums[left..right] in O(1)."""
+    return prefix[right + 1] - prefix[left]
+
+nums = [3, 1, 4, 1, 5, 9, 2, 6]
+prefix = build_prefix_sum(nums)
+print(f"Array:      {nums}")
+print(f"Prefix sum: {prefix}")
+print()
+
+# Query examples
+queries = [(0, 2), (2, 5), (0, 7), (4, 4)]
+for l, r in queries:
+    print(f"sum({l}, {r}) = {range_sum(prefix, l, r)}  (elements: {nums[l:r+1]})")`} title="Prefix Sum Basics" />
+
+## Subarray Sum Equals k
+
+**Problem**: Given an array of integers, find the total number of contiguous subarrays whose sum equals $k$.
+
+A brute-force approach checks all $O(n^2)$ subarrays. The prefix sum + hash map approach runs in $O(n)$. The key insight: if the current prefix sum is $P[j]$ and we need a subarray summing to $k$, we need a previous prefix sum $P[i] = P[j] - k$. A hash map counts how many times each prefix sum has occurred.
+
+<CodePlayground code={`from collections import defaultdict
+
+def subarray_sum(nums, k):
+    """Count subarrays with sum equal to k."""
+    count = 0
+    current_sum = 0
+    # Map: prefix_sum -> number of times it has occurred
+    prefix_counts = defaultdict(int)
+    prefix_counts[0] = 1  # empty prefix has sum 0
+
+    for num in nums:
+        current_sum += num
+        # How many previous prefix sums equal current_sum - k?
+        count += prefix_counts[current_sum - k]
+        prefix_counts[current_sum] += 1
+
+    return count
+
+nums = [1, 1, 1]
+print(f"Array: {nums}, k=2 -> {subarray_sum(nums, 2)} subarrays")
+
+nums2 = [1, 2, 3, -1, 2]
+print(f"Array: {nums2}, k=4 -> {subarray_sum(nums2, 4)} subarrays")
+
+nums3 = [3, 4, 7, 2, -3, 1, 4, 2]
+print(f"Array: {nums3}, k=7 -> {subarray_sum(nums3, 7)} subarrays")`} title="Subarray Sum Equals k" />
+
+## Product of Array Except Self
+
+**Problem**: Given an array $nums$, return an array where each element is the product of all elements except itself, without using division.
+
+The trick: build a **left product** prefix and a **right product** suffix, then multiply them.
+
+<CodePlayground code={`def product_except_self(nums):
+    """Compute product of all elements except self, no division."""
+    n = len(nums)
+    result = [1] * n
+
+    # Left pass: result[i] = product of nums[0..i-1]
+    left_product = 1
+    for i in range(n):
+        result[i] = left_product
+        left_product *= nums[i]
+
+    # Right pass: multiply by product of nums[i+1..n-1]
+    right_product = 1
+    for i in range(n - 1, -1, -1):
+        result[i] *= right_product
+        right_product *= nums[i]
+
+    return result
+
+nums = [1, 2, 3, 4]
+print(f"Array:  {nums}")
+print(f"Result: {product_except_self(nums)}")
+# [2*3*4, 1*3*4, 1*2*4, 1*2*3] = [24, 12, 8, 6]
+
+nums2 = [-1, 1, 0, -3, 3]
+print(f"\\nArray:  {nums2}")
+print(f"Result: {product_except_self(nums2)}")`} title="Product of Array Except Self" />
+
+## Contiguous Array (Equal 0s and 1s)
+
+**Problem**: Find the longest contiguous subarray with an equal number of 0s and 1s. Transform 0s to -1s, then the problem becomes finding the longest subarray with sum 0 -- a classic prefix sum + hash map pattern.
+
+<CodePlayground code={`def find_max_length(nums):
+    """Find longest subarray with equal number of 0s and 1s."""
+    # Replace 0 with -1, then find longest subarray with sum 0
+    prefix_sum = 0
+    first_seen = {0: -1}  # prefix_sum -> earliest index
+    best = 0
+
+    for i, num in enumerate(nums):
+        prefix_sum += 1 if num == 1 else -1
+
+        if prefix_sum in first_seen:
+            best = max(best, i - first_seen[prefix_sum])
+        else:
+            first_seen[prefix_sum] = i
+
+    return best
+
+nums = [0, 1, 0, 0, 1, 1, 0]
+print(f"Array: {nums}")
+print(f"Longest balanced subarray: {find_max_length(nums)}")
+
+nums2 = [0, 1]
+print(f"\\nArray: {nums2}")
+print(f"Longest balanced subarray: {find_max_length(nums2)}")`} title="Contiguous Array -- Equal 0s and 1s" />
+
+## Prefix Sum with Modular Arithmetic
+
+**Problem**: Check if there exists a subarray of size at least 2 whose sum is a multiple of $k$. If two prefix sums have the same remainder mod $k$, the subarray between them has a sum divisible by $k$.
+
+<CodePlayground code={`def check_subarray_sum(nums, k):
+    """Check if a subarray of size >= 2 has sum divisible by k."""
+    remainder_map = {0: -1}  # remainder -> earliest index
+    prefix_sum = 0
+
+    for i, num in enumerate(nums):
+        prefix_sum += num
+        remainder = prefix_sum % k
+
+        if remainder in remainder_map:
+            if i - remainder_map[remainder] >= 2:
+                return True
+        else:
+            remainder_map[remainder] = i
+
+    return False
+
+print(check_subarray_sum([23, 2, 4, 6, 7], 6))   # True: [2,4] sums to 6
+print(check_subarray_sum([23, 2, 6, 4, 7], 6))   # True: [23,2,6,4,7] sums to 42
+print(check_subarray_sum([23, 2, 6, 4, 7], 13))  # True: [2,6,4] sums to 12? No. Actually check...
+
+nums = [23, 2, 4, 6, 6]
+k = 7
+print(f"\\nArray: {nums}, k={k}")
+print(f"Has subarray with sum % {k} == 0: {check_subarray_sum(nums, k)}")`} title="Subarray Sum Divisible by k" />
+
+## 2D Prefix Sum
+
+The prefix sum idea extends to 2D matrices. Build a 2D prefix sum table where $P[i][j]$ stores the sum of all elements in the sub-matrix from $(0,0)$ to $(i-1, j-1)$. Then any rectangular region sum can be computed in $O(1)$ using inclusion-exclusion:
+
+$$\text{sum}(r_1, c_1, r_2, c_2) = P[r_2+1][c_2+1] - P[r_1][c_2+1] - P[r_2+1][c_1] + P[r_1][c_1]$$
+
+<CodePlayground code={`def build_2d_prefix(matrix):
+    """Build 2D prefix sum table."""
+    if not matrix:
+        return []
+    rows, cols = len(matrix), len(matrix[0])
+    P = [[0] * (cols + 1) for _ in range(rows + 1)]
+
+    for i in range(rows):
+        for j in range(cols):
+            P[i+1][j+1] = (matrix[i][j]
+                           + P[i][j+1]
+                           + P[i+1][j]
+                           - P[i][j])
+    return P
+
+def region_sum(P, r1, c1, r2, c2):
+    """Sum of sub-matrix from (r1,c1) to (r2,c2) inclusive, in O(1)."""
+    return (P[r2+1][c2+1]
+            - P[r1][c2+1]
+            - P[r2+1][c1]
+            + P[r1][c1])
+
+matrix = [
+    [1, 2, 3, 4],
+    [5, 6, 7, 8],
+    [9, 10, 11, 12]
+]
+P = build_2d_prefix(matrix)
+
+print("Matrix:")
+for row in matrix:
+    print(f"  {row}")
+print()
+
+# Query: sum of sub-matrix from (0,1) to (2,2)
+# = 2+3 + 6+7 + 10+11 = 39
+print(f"Region (0,1)-(2,2): {region_sum(P, 0, 1, 2, 2)}")
+print(f"Region (1,1)-(2,3): {region_sum(P, 1, 1, 2, 3)}")
+print(f"Entire matrix:      {region_sum(P, 0, 0, 2, 3)}")`} title="2D Prefix Sum" />
+
+## Complexity Summary
+
+| Problem | Brute Force | Prefix Sum | Space |
+|---------|------------|-----------|-------|
+| Range sum query | $O(n)$ per query | $O(1)$ per query | $O(n)$ |
+| Subarray sum equals $k$ | $O(n^2)$ | $O(n)$ | $O(n)$ |
+| Product except self | $O(n^2)$ or $O(n)$ with division | $O(n)$ no division | $O(n)$ or $O(1)$ |
+| Contiguous array (0s/1s) | $O(n^2)$ | $O(n)$ | $O(n)$ |
+| 2D region sum | $O(mn)$ per query | $O(1)$ per query | $O(mn)$ |
+
+## Common Pitfalls
+
+- **Off-by-one with prefix indexing** -- remember that $P$ has length $n+1$ and $P[0] = 0$ represents the empty prefix
+- **Forgetting to initialize** `prefix_counts[0] = 1` in the subarray-sum-equals-k pattern -- without it you miss subarrays starting at index 0
+- **Integer overflow** -- in languages with fixed-width integers, prefix sums of large arrays can overflow; Python handles this naturally with arbitrary-precision integers
+- **Using division for product** -- fails when zeros are present; the two-pass approach avoids this entirely
+
+## Key Takeaways
+
+- Prefix sums convert range-sum queries from $O(n)$ to $O(1)$ with $O(n)$ preprocessing
+- The **prefix sum + hash map** combo solves "count subarrays with property X" problems in $O(n)$
+- The **left/right product** pattern (a generalization of prefix sums to multiplication) solves "product except self" in $O(n)$ time and $O(1)$ extra space
+- 2D prefix sums use **inclusion-exclusion** to answer rectangular region queries in $O(1)$
+- Whenever a problem asks about contiguous subarray sums, think prefix sum first

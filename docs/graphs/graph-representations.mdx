@@ -7,63 +7,247 @@ import CodePlayground from '@site/src/components/CodePlayground';
 
 # Graph Representations
 
-Graphs model relationships between objects using vertices (nodes) and edges. This page covers the two primary ways to represent graphs: adjacency lists and adjacency matrices, along with their trade-offs.
+Graphs are one of the most versatile data structures in computer science, modeling relationships between objects. Before solving any graph problem, you must choose **how to store** the graph in memory. This choice affects both the time complexity of operations and the space your program consumes.
 
-## Overview
+## Graph Terminology
 
-An adjacency list stores a list of neighbors for each vertex, making it space-efficient for sparse graphs. An adjacency matrix uses a 2D array where entry (i, j) indicates an edge between vertex i and vertex j, providing O(1) edge lookups at the cost of O(V^2) space.
+A **graph** $G = (V, E)$ consists of a set of **vertices** (or nodes) $V$ and a set of **edges** $E$ connecting pairs of vertices.
 
-## Implementation
+| Term | Definition |
+|------|-----------|
+| **Vertex (Node)** | A fundamental unit in a graph |
+| **Edge** | A connection between two vertices |
+| **Directed graph (Digraph)** | Edges have direction: $(u, v) \neq (v, u)$ |
+| **Undirected graph** | Edges have no direction: $\{u, v\} = \{v, u\}$ |
+| **Weighted graph** | Each edge carries a numerical weight |
+| **Degree** | Number of edges incident to a vertex |
+| **In-degree / Out-degree** | For directed graphs: edges coming in / going out |
+| **Path** | A sequence of vertices connected by edges |
+| **Cycle** | A path that starts and ends at the same vertex |
+| **Connected graph** | Every pair of vertices has a path between them |
+| **Sparse graph** | $|E|$ is much less than $|V|^2$ |
+| **Dense graph** | $|E|$ is close to $|V|^2$ |
 
-<CodePlayground
-  code={`# Graph Representations
-# 1. Adjacency List
-from collections import defaultdict
+For an undirected graph, the sum of all vertex degrees equals $2|E|$. For a directed graph, the sum of in-degrees equals the sum of out-degrees equals $|E|$.
+
+## Adjacency List
+
+The most common representation for sparse graphs. Each vertex stores a list of its neighbors.
+
+- **Space**: $O(V + E)$
+- **Check if edge exists**: $O(\text{degree}(u))$
+- **Iterate neighbors**: $O(\text{degree}(u))$
+- **Add edge**: $O(1)$
+
+This is the go-to representation for most graph problems because real-world graphs tend to be sparse.
+
+<CodePlayground code={`from collections import defaultdict
 
 class GraphAdjList:
-    def __init__(self):
-        self.graph = defaultdict(list)
+    """Adjacency list representation of a graph."""
+    def __init__(self, directed=False):
+        self.adj = defaultdict(list)
+        self.directed = directed
 
-    def add_edge(self, u, v):
-        self.graph[u].append(v)
-        self.graph[v].append(u)  # undirected
+    def add_edge(self, u, v, weight=None):
+        if weight is not None:
+            self.adj[u].append((v, weight))
+            if not self.directed:
+                self.adj[v].append((u, weight))
+        else:
+            self.adj[u].append(v)
+            if not self.directed:
+                self.adj[v].append(u)
+
+    def has_edge(self, u, v):
+        return v in self.adj[u]
+
+    def neighbors(self, u):
+        return self.adj[u]
 
     def display(self):
-        for node in sorted(self.graph):
-            print(f"  {node} -> {self.graph[node]}")
+        for node in sorted(self.adj):
+            print(f"  {node} -> {self.adj[node]}")
 
-print("=== Adjacency List ===")
-g1 = GraphAdjList()
-g1.add_edge(0, 1)
-g1.add_edge(0, 2)
-g1.add_edge(1, 3)
-g1.add_edge(2, 3)
-g1.display()
+# Example: Undirected unweighted graph
+#   0 --- 1
+#   |     |
+#   2 --- 3
+print("=== Undirected Unweighted Graph ===")
+g = GraphAdjList(directed=False)
+for u, v in [(0,1), (0,2), (1,3), (2,3)]:
+    g.add_edge(u, v)
+g.display()
+print(f"Neighbors of 0: {g.neighbors(0)}")
+print(f"Edge 0->3 exists? {g.has_edge(0, 3)}")
+print(f"Edge 0->1 exists? {g.has_edge(0, 1)}")
 
-# 2. Adjacency Matrix
-print("\\n=== Adjacency Matrix ===")
-V = 4
-matrix = [[0] * V for _ in range(V)]
+# Example: Directed weighted graph
+print("\\n=== Directed Weighted Graph ===")
+dg = GraphAdjList(directed=True)
+for u, v, w in [(0,1,4), (0,2,1), (1,3,2), (2,1,2), (2,3,5)]:
+    dg.add_edge(u, v, weight=w)
+dg.display()`} title="Adjacency List Implementation" />
 
+## Adjacency Matrix
+
+A 2D array where `matrix[i][j]` indicates whether an edge exists from vertex $i$ to vertex $j$. For weighted graphs, the value stores the weight instead of a boolean.
+
+- **Space**: $O(V^2)$
+- **Check if edge exists**: $O(1)$ -- the key advantage
+- **Iterate neighbors**: $O(V)$
+- **Add edge**: $O(1)$
+
+Best suited for dense graphs or when you need constant-time edge lookups.
+
+<CodePlayground code={`class GraphMatrix:
+    """Adjacency matrix representation of a graph."""
+    def __init__(self, num_vertices, directed=False):
+        self.V = num_vertices
+        self.directed = directed
+        # 0 means no edge; for weighted graphs, use float('inf')
+        self.matrix = [[0] * num_vertices for _ in range(num_vertices)]
+
+    def add_edge(self, u, v, weight=1):
+        self.matrix[u][v] = weight
+        if not self.directed:
+            self.matrix[v][u] = weight
+
+    def has_edge(self, u, v):
+        return self.matrix[u][v] != 0
+
+    def neighbors(self, u):
+        return [v for v in range(self.V) if self.matrix[u][v] != 0]
+
+    def display(self):
+        print("    " + " ".join(str(i) for i in range(self.V)))
+        print("   " + "--" * self.V)
+        for i in range(self.V):
+            row = " ".join(str(self.matrix[i][j]) for j in range(self.V))
+            print(f"  {i}| {row}")
+
+# Build graph:  0 -- 1
+#               |    |
+#               2 -- 3
+g = GraphMatrix(4)
+for u, v in [(0,1), (0,2), (1,3), (2,3)]:
+    g.add_edge(u, v)
+
+print("=== Adjacency Matrix ===")
+g.display()
+print(f"\\nEdge 0->3? {g.has_edge(0, 3)}")
+print(f"Edge 0->1? {g.has_edge(0, 1)}")
+print(f"Neighbors of 1: {g.neighbors(1)}")`} title="Adjacency Matrix Implementation" />
+
+## Edge List
+
+Simply store all edges as a list of tuples. This is the simplest representation and is useful for algorithms like Kruskal's MST that process edges one by one.
+
+- **Space**: $O(E)$
+- **Check if edge exists**: $O(E)$
+- **Iterate all edges**: $O(E)$ -- very efficient
+- **Add edge**: $O(1)$
+
+<CodePlayground code={`# Edge list: list of (u, v) or (u, v, weight)
+edges = [(0,1,4), (0,2,1), (1,3,2), (2,1,2), (2,3,5)]
+
+print("=== Edge List ===")
+for u, v, w in edges:
+    print(f"  {u} -> {v}, weight = {w}")
+
+# Useful for: sorting edges by weight (Kruskal's)
+sorted_edges = sorted(edges, key=lambda e: e[2])
+print("\\nEdges sorted by weight:")
+for u, v, w in sorted_edges:
+    print(f"  {u} -> {v}, weight = {w}")`} title="Edge List Representation" />
+
+## Converting Between Representations
+
+In practice, problems give you edges and you must build the right structure.
+
+<CodePlayground code={`from collections import defaultdict
+
+def edge_list_to_adj_list(edges, directed=False):
+    """Convert edge list to adjacency list."""
+    adj = defaultdict(list)
+    for u, v in edges:
+        adj[u].append(v)
+        if not directed:
+            adj[v].append(u)
+    return dict(adj)
+
+def adj_list_to_matrix(adj, num_vertices):
+    """Convert adjacency list to adjacency matrix."""
+    matrix = [[0] * num_vertices for _ in range(num_vertices)]
+    for u in adj:
+        for v in adj[u]:
+            matrix[u][v] = 1
+    return matrix
+
+def matrix_to_adj_list(matrix):
+    """Convert adjacency matrix to adjacency list."""
+    adj = defaultdict(list)
+    n = len(matrix)
+    for i in range(n):
+        for j in range(n):
+            if matrix[i][j] != 0:
+                adj[i].append(j)
+    return dict(adj)
+
+# Demo: start with edge list
 edges = [(0,1), (0,2), (1,3), (2,3)]
-for u, v in edges:
-    matrix[u][v] = 1
-    matrix[v][u] = 1  # undirected
+print("Edge list:", edges)
 
+# Convert to adjacency list
+adj = edge_list_to_adj_list(edges)
+print("\\nAdjacency list:")
+for node in sorted(adj):
+    print(f"  {node} -> {adj[node]}")
+
+# Convert to adjacency matrix
+matrix = adj_list_to_matrix(adj, 4)
+print("\\nAdjacency matrix:")
 for row in matrix:
-    print(" ", row)`}
-  title="Graph Representations Example"
-/>
+    print(" ", row)
 
-## Complexity
+# Convert back to adjacency list
+adj2 = matrix_to_adj_list(matrix)
+print("\\nBack to adjacency list:")
+for node in sorted(adj2):
+    print(f"  {node} -> {adj2[node]}")`} title="Converting Between Representations" />
 
-| Operation         | Adjacency List | Adjacency Matrix |
-|-------------------|---------------|-----------------|
-| Add Edge          | O(1)          | O(1)            |
-| Remove Edge       | O(E)          | O(1)            |
-| Check Edge Exists | O(V)          | O(1)            |
-| Space             | O(V + E)      | O(V^2)          |
+## When to Use Which Representation
+
+| Criteria | Adjacency List | Adjacency Matrix | Edge List |
+|----------|---------------|------------------|-----------|
+| Sparse graph ($E \ll V^2$) | Best | Wastes space | Good |
+| Dense graph ($E \approx V^2$) | OK | Best | OK |
+| Check edge existence | $O(\deg)$ | $O(1)$ | $O(E)$ |
+| Iterate neighbors | $O(\deg)$ | $O(V)$ | $O(E)$ |
+| Memory | $O(V+E)$ | $O(V^2)$ | $O(E)$ |
+| BFS / DFS | Best | OK | Convert first |
+| Kruskal's MST | Convert first | Convert first | Best |
+
+**Rule of thumb**: Use an **adjacency list** (usually a `defaultdict(list)`) unless you have a specific reason not to. Most interview and competitive programming problems work best with adjacency lists.
+
+## Complexity Summary
+
+| Operation | Adj List | Adj Matrix | Edge List |
+|-----------|---------|-----------|-----------|
+| Space | $O(V + E)$ | $O(V^2)$ | $O(E)$ |
+| Add edge | $O(1)$ | $O(1)$ | $O(1)$ |
+| Check edge | $O(\deg(u))$ | $O(1)$ | $O(E)$ |
+| All neighbors | $O(\deg(u))$ | $O(V)$ | $O(E)$ |
+| All edges | $O(V + E)$ | $O(V^2)$ | $O(E)$ |
+
+## Key Takeaways
+
+1. **Adjacency list** is the default choice for most graph problems -- $O(V+E)$ space and efficient neighbor iteration.
+2. **Adjacency matrix** excels when you need $O(1)$ edge lookups or when the graph is dense.
+3. **Edge list** is ideal for edge-centric algorithms like Kruskal's MST.
+4. Understanding graph terminology (directed vs undirected, weighted vs unweighted, degree) is essential before tackling graph algorithms.
+5. Most problems provide edges as input -- practice converting edge lists into your preferred representation quickly.
 
 ---
 
-*Full content coming soon.*
+**Next:** [Breadth-First Search](/docs/graphs/bfs)

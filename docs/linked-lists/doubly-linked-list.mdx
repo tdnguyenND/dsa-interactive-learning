@@ -1,0 +1,479 @@
+---
+sidebar_position: 2
+title: "Doubly Linked List"
+---
+
+import CodePlayground from '@site/src/components/CodePlayground';
+
+# Doubly Linked List
+
+A doubly linked list extends the singly linked list by giving each node a **prev** pointer in addition to the **next** pointer. This seemingly small addition unlocks significant advantages: $O(1)$ deletion when you have a reference to the node, bidirectional traversal, and simpler algorithms for many operations.
+
+## Node Structure
+
+Each node contains three fields:
+
+- **data** -- the stored value
+- **prev** -- pointer to the previous node (or `None` for the head)
+- **next** -- pointer to the next node (or `None` for the tail)
+
+```
+None <- [10] <-> [20] <-> [30] <-> [40] -> None
+         ^                           ^
+        head                        tail
+```
+
+Maintaining both `head` and `tail` pointers gives $O(1)$ access to both ends of the list.
+
+## Advantages Over Singly Linked Lists
+
+| Feature | Singly Linked | Doubly Linked |
+|---|---|---|
+| Backward traversal | Not possible | $O(n)$ |
+| Delete node (given reference) | $O(n)$ -- need predecessor | $O(1)$ -- use prev pointer |
+| Insert before node (given reference) | $O(n)$ -- need predecessor | $O(1)$ -- use prev pointer |
+| Insert at tail (with tail pointer) | $O(1)$ | $O(1)$ |
+| Memory per node | 1 pointer | 2 pointers |
+
+The tradeoff is clear: doubly linked lists use more memory per node but offer faster operations when you already hold a reference to a node.
+
+## Full Implementation
+
+<CodePlayground code={`class Node:
+    """A node in a doubly linked list."""
+    def __init__(self, data):
+        self.data = data
+        self.prev = None
+        self.next = None
+
+    def __repr__(self):
+        return f"Node({self.data})"
+
+
+class DoublyLinkedList:
+    """Doubly linked list with head and tail pointers."""
+    def __init__(self):
+        self.head = None
+        self.tail = None
+        self.size = 0
+
+    # --- Insertion ---
+
+    def insert_at_head(self, data):
+        """Insert at the front. O(1) time."""
+        new_node = Node(data)
+        if not self.head:
+            self.head = self.tail = new_node
+        else:
+            new_node.next = self.head
+            self.head.prev = new_node
+            self.head = new_node
+        self.size += 1
+
+    def insert_at_tail(self, data):
+        """Insert at the back. O(1) time."""
+        new_node = Node(data)
+        if not self.tail:
+            self.head = self.tail = new_node
+        else:
+            new_node.prev = self.tail
+            self.tail.next = new_node
+            self.tail = new_node
+        self.size += 1
+
+    def insert_after(self, node, data):
+        """Insert new data after a given node. O(1) time."""
+        if node is None:
+            raise ValueError("Cannot insert after None")
+        new_node = Node(data)
+        new_node.prev = node
+        new_node.next = node.next
+        if node.next:
+            node.next.prev = new_node
+        else:
+            self.tail = new_node  # inserting after current tail
+        node.next = new_node
+        self.size += 1
+
+    # --- Deletion ---
+
+    def delete_node(self, node):
+        """Delete a node given its reference. O(1) time."""
+        if node is None:
+            return
+        if node.prev:
+            node.prev.next = node.next
+        else:
+            self.head = node.next  # deleting head
+
+        if node.next:
+            node.next.prev = node.prev
+        else:
+            self.tail = node.prev  # deleting tail
+
+        self.size -= 1
+
+    def delete_by_value(self, value):
+        """Find and delete first occurrence of value. O(n) time."""
+        curr = self.head
+        while curr:
+            if curr.data == value:
+                self.delete_node(curr)
+                return True
+            curr = curr.next
+        return False
+
+    # --- Traversal ---
+
+    def traverse_forward(self):
+        """Traverse head to tail. O(n) time."""
+        elements = []
+        curr = self.head
+        while curr:
+            elements.append(curr.data)
+            curr = curr.next
+        return elements
+
+    def traverse_backward(self):
+        """Traverse tail to head. O(n) time."""
+        elements = []
+        curr = self.tail
+        while curr:
+            elements.append(curr.data)
+            curr = curr.prev
+        return elements
+
+    def search(self, value):
+        """Return the node with given value, or None."""
+        curr = self.head
+        while curr:
+            if curr.data == value:
+                return curr
+            curr = curr.next
+        return None
+
+    def __len__(self):
+        return self.size
+
+    def __repr__(self):
+        return " <-> ".join(str(x) for x in self.traverse_forward())
+
+
+# --- Demo ---
+dll = DoublyLinkedList()
+for v in [10, 20, 30, 40, 50]:
+    dll.insert_at_tail(v)
+
+print("Forward:", dll.traverse_forward())
+print("Backward:", dll.traverse_backward())
+print("Size:", len(dll))
+
+dll.insert_at_head(5)
+print("After insert_at_head(5):", dll)
+
+node_30 = dll.search(30)
+dll.insert_after(node_30, 35)
+print("After insert 35 after 30:", dll)
+
+dll.delete_by_value(20)
+print("After delete 20:", dll)
+
+dll.delete_node(dll.head)
+print("After delete head:", dll)
+
+dll.delete_node(dll.tail)
+print("After delete tail:", dll)`} title="Complete Doubly Linked List Implementation" />
+
+## The Power of $O(1)$ Node Deletion
+
+The critical advantage of a doubly linked list is that if you already have a reference to a node, you can remove it in constant time. In a singly linked list, you would need to traverse from the head to find the predecessor -- an $O(n)$ operation.
+
+This is possible because each node knows both its neighbors:
+
+```python
+def delete_node(self, node):
+    node.prev.next = node.next   # bypass node going forward
+    node.next.prev = node.prev   # bypass node going backward
+```
+
+This property makes doubly linked lists the backbone of many data structures, most notably the **LRU Cache**.
+
+## Sentinel Nodes Pattern
+
+A common technique is to use **sentinel** (dummy) head and tail nodes to eliminate null checks in every operation. The sentinels never hold real data -- they just simplify the code.
+
+<CodePlayground code={`class Node:
+    def __init__(self, key=0, value=0):
+        self.key = key
+        self.value = value
+        self.prev = None
+        self.next = None
+
+class SentinelDLL:
+    """Doubly linked list with sentinel head and tail."""
+    def __init__(self):
+        self.head = Node()  # dummy head
+        self.tail = Node()  # dummy tail
+        self.head.next = self.tail
+        self.tail.prev = self.head
+
+    def add_to_front(self, node):
+        """Add node right after the dummy head. O(1)."""
+        node.prev = self.head
+        node.next = self.head.next
+        self.head.next.prev = node
+        self.head.next = node
+
+    def remove(self, node):
+        """Remove a node from anywhere. O(1)."""
+        node.prev.next = node.next
+        node.next.prev = node.prev
+
+    def pop_back(self):
+        """Remove and return the last real node (before tail). O(1)."""
+        if self.tail.prev == self.head:
+            return None  # list is empty
+        node = self.tail.prev
+        self.remove(node)
+        return node
+
+    def to_list(self):
+        result = []
+        curr = self.head.next
+        while curr != self.tail:
+            result.append(curr.value)
+            curr = curr.next
+        return result
+
+
+# Demo
+dll = SentinelDLL()
+n1 = Node(1, 100)
+n2 = Node(2, 200)
+n3 = Node(3, 300)
+
+dll.add_to_front(n1)
+dll.add_to_front(n2)
+dll.add_to_front(n3)
+print("List:", dll.to_list())
+
+dll.remove(n2)
+print("After removing 200:", dll.to_list())
+
+removed = dll.pop_back()
+print("Popped from back:", removed.value)
+print("Remaining:", dll.to_list())`} title="Sentinel Nodes Pattern" />
+
+Notice how `add_to_front` and `remove` have **no if-statements** -- the sentinels guarantee that `node.prev` and `node.next` always exist. This makes the code cleaner and less error-prone.
+
+## Practical Application: LRU Cache
+
+The **Least Recently Used (LRU) Cache** is a classic data structure that combines a hash map with a doubly linked list. It supports $O(1)$ `get` and `put` operations while automatically evicting the least recently used entry when the cache is full.
+
+**Design:**
+- A **hash map** maps keys to node references for $O(1)$ lookup
+- A **doubly linked list** maintains access order -- most recent at the front, least recent at the back
+- On `get`: move the accessed node to the front
+- On `put`: add a new node at the front; if over capacity, evict the node at the back
+
+<CodePlayground code={`class Node:
+    def __init__(self, key=0, value=0):
+        self.key = key
+        self.value = value
+        self.prev = None
+        self.next = None
+
+class LRUCache:
+    def __init__(self, capacity):
+        self.capacity = capacity
+        self.cache = {}  # key -> Node
+
+        # Sentinel nodes
+        self.head = Node()
+        self.tail = Node()
+        self.head.next = self.tail
+        self.tail.prev = self.head
+
+    def _add_to_front(self, node):
+        """Add node right after head sentinel."""
+        node.prev = self.head
+        node.next = self.head.next
+        self.head.next.prev = node
+        self.head.next = node
+
+    def _remove(self, node):
+        """Remove node from its current position."""
+        node.prev.next = node.next
+        node.next.prev = node.prev
+
+    def _move_to_front(self, node):
+        """Move existing node to the front (most recent)."""
+        self._remove(node)
+        self._add_to_front(node)
+
+    def get(self, key):
+        """Get value by key. Returns -1 if not found. O(1)."""
+        if key not in self.cache:
+            return -1
+        node = self.cache[key]
+        self._move_to_front(node)  # mark as recently used
+        return node.value
+
+    def put(self, key, value):
+        """Insert or update a key-value pair. O(1)."""
+        if key in self.cache:
+            node = self.cache[key]
+            node.value = value
+            self._move_to_front(node)
+            return
+
+        # Add new node
+        new_node = Node(key, value)
+        self.cache[key] = new_node
+        self._add_to_front(new_node)
+
+        # Evict if over capacity
+        if len(self.cache) > self.capacity:
+            lru = self.tail.prev  # least recently used
+            self._remove(lru)
+            del self.cache[lru.key]
+
+    def __repr__(self):
+        items = []
+        curr = self.head.next
+        while curr != self.tail:
+            items.append(f"{curr.key}:{curr.value}")
+            curr = curr.next
+        return "LRU[" + " -> ".join(items) + "]"
+
+
+# --- Demo ---
+cache = LRUCache(3)
+
+cache.put(1, "A")
+cache.put(2, "B")
+cache.put(3, "C")
+print("Initial:", cache)
+
+print("Get key 1:", cache.get(1))
+print("After get(1):", cache)  # key 1 moved to front
+
+cache.put(4, "D")  # evicts key 2 (least recently used)
+print("After put(4, D):", cache)
+
+print("Get key 2:", cache.get(2))  # returns -1, was evicted
+
+cache.put(5, "E")  # evicts key 3
+print("After put(5, E):", cache)`} title="LRU Cache Implementation" />
+
+**Why this works in $O(1)$:**
+- The hash map provides $O(1)$ key lookup, returning a direct node reference
+- The doubly linked list provides $O(1)$ removal and insertion using that reference
+- Together, every operation (get, put, evict) is constant time
+
+This is a frequently asked interview question (LeetCode 146) and a real-world pattern used in operating systems, databases, and web frameworks.
+
+## Doubly Linked List for Deque
+
+A doubly linked list naturally supports **deque** (double-ended queue) operations -- insert and remove from both ends in $O(1)$:
+
+<CodePlayground code={`class Node:
+    def __init__(self, data):
+        self.data = data
+        self.prev = None
+        self.next = None
+
+class Deque:
+    """Double-ended queue backed by a doubly linked list."""
+    def __init__(self):
+        self.head = None
+        self.tail = None
+        self.size = 0
+
+    def push_front(self, data):
+        node = Node(data)
+        if not self.head:
+            self.head = self.tail = node
+        else:
+            node.next = self.head
+            self.head.prev = node
+            self.head = node
+        self.size += 1
+
+    def push_back(self, data):
+        node = Node(data)
+        if not self.tail:
+            self.head = self.tail = node
+        else:
+            node.prev = self.tail
+            self.tail.next = node
+            self.tail = node
+        self.size += 1
+
+    def pop_front(self):
+        if not self.head:
+            raise IndexError("Deque is empty")
+        data = self.head.data
+        self.head = self.head.next
+        if self.head:
+            self.head.prev = None
+        else:
+            self.tail = None
+        self.size -= 1
+        return data
+
+    def pop_back(self):
+        if not self.tail:
+            raise IndexError("Deque is empty")
+        data = self.tail.data
+        self.tail = self.tail.prev
+        if self.tail:
+            self.tail.next = None
+        else:
+            self.head = None
+        self.size -= 1
+        return data
+
+    def __repr__(self):
+        elems = []
+        curr = self.head
+        while curr:
+            elems.append(str(curr.data))
+            curr = curr.next
+        return "Deque[" + ", ".join(elems) + "]"
+
+# Demo
+dq = Deque()
+dq.push_back(1)
+dq.push_back(2)
+dq.push_front(0)
+dq.push_back(3)
+print(dq)
+
+print("pop_front:", dq.pop_front())
+print("pop_back:", dq.pop_back())
+print("After pops:", dq)`} title="Deque Using Doubly Linked List" />
+
+## Complexity Summary
+
+| Operation | Time | Space |
+|---|---|---|
+| Insert at head | $O(1)$ | $O(1)$ |
+| Insert at tail | $O(1)$ | $O(1)$ |
+| Insert after node | $O(1)$ | $O(1)$ |
+| Delete node (given reference) | $O(1)$ | $O(1)$ |
+| Delete by value (search needed) | $O(n)$ | $O(1)$ |
+| Search | $O(n)$ | $O(1)$ |
+| Forward traversal | $O(n)$ | $O(1)$ |
+| Backward traversal | $O(n)$ | $O(1)$ |
+| Space for $n$ nodes | -- | $O(n)$ |
+
+## Key Takeaways
+
+- A doubly linked list adds a `prev` pointer to each node, enabling bidirectional traversal and $O(1)$ deletion when you have a node reference.
+- **Sentinel nodes** (dummy head and tail) eliminate null-check edge cases and produce cleaner code.
+- The **LRU Cache** is the canonical application -- combining a hash map with a doubly linked list for $O(1)$ get/put with automatic eviction.
+- Doubly linked lists are the natural choice for implementing **deques**, **browser history** (back/forward), and **undo/redo** systems.
+- The extra memory cost (one additional pointer per node) is almost always worth the algorithmic simplification.
+
+**Next:** [Linked List Patterns](./linked-list-patterns)

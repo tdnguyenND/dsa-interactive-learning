@@ -1,0 +1,274 @@
+---
+sidebar_position: 4
+title: "Sliding Window"
+---
+
+import CodePlayground from '@site/src/components/CodePlayground';
+
+# Sliding Window
+
+The sliding window technique maintains a **contiguous subarray or substring** (the "window") and slides it across the input, updating the answer incrementally instead of recomputing from scratch. This turns $O(n \cdot k)$ or $O(n^2)$ brute-force approaches into $O(n)$.
+
+There are two main variants:
+
+- **Fixed-size window** -- the window always contains exactly $k$ elements
+- **Variable-size window** -- the window expands and shrinks to satisfy a condition
+
+## Fixed-Size Window
+
+### Maximum Sum Subarray of Size k
+
+Find the maximum sum of any contiguous subarray of exactly $k$ elements. Instead of summing $k$ elements for each starting position, slide the window: subtract the element leaving the left side and add the element entering the right side.
+
+<CodePlayground code={`def max_sum_subarray(nums, k):
+    """Find the maximum sum of any subarray of size k."""
+    n = len(nums)
+    if n < k:
+        return None
+
+    # Compute sum of first window
+    window_sum = sum(nums[:k])
+    best = window_sum
+
+    # Slide the window: remove left element, add right element
+    for i in range(k, n):
+        window_sum += nums[i] - nums[i - k]
+        best = max(best, window_sum)
+
+    return best
+
+nums = [2, 1, 5, 1, 3, 2]
+k = 3
+print(f"Array: {nums}, k={k}")
+print(f"Max sum of subarray of size {k}: {max_sum_subarray(nums, k)}")
+
+nums2 = [2, 3, 4, 1, 5]
+k2 = 2
+print(f"\\nArray: {nums2}, k={k2}")
+print(f"Max sum of subarray of size {k2}: {max_sum_subarray(nums2, k2)}")`} title="Maximum Sum Subarray of Size k" />
+
+### Maximum of All Subarrays of Size k
+
+A more advanced fixed-window problem: find the maximum in every window of size $k$. A deque keeps candidate indices in decreasing order of their values.
+
+<CodePlayground code={`from collections import deque
+
+def max_sliding_window(nums, k):
+    """Return the max value in each window of size k."""
+    result = []
+    dq = deque()  # stores indices, front is always the current max
+
+    for i, val in enumerate(nums):
+        # Remove indices outside the window
+        while dq and dq[0] < i - k + 1:
+            dq.popleft()
+        # Remove smaller elements (they can never be the max)
+        while dq and nums[dq[-1]] < val:
+            dq.pop()
+        dq.append(i)
+        # Start recording once we have a full window
+        if i >= k - 1:
+            result.append(nums[dq[0]])
+
+    return result
+
+nums = [1, 3, -1, -3, 5, 3, 6, 7]
+k = 3
+print(f"Array: {nums}, k={k}")
+print(f"Window maxima: {max_sliding_window(nums, k)}")
+# Windows: [1,3,-1]=3, [3,-1,-3]=3, [-1,-3,5]=5, [-3,5,3]=5, [5,3,6]=6, [3,6,7]=7`} title="Sliding Window Maximum" />
+
+## Variable-Size Window
+
+In the variable-size variant, the window expands by advancing the right pointer and shrinks by advancing the left pointer. The general template is:
+
+```
+left = 0
+for right in range(n):
+    add nums[right] to window state
+    while window is invalid:
+        remove nums[left] from window state
+        left += 1
+    update answer with current window
+```
+
+Each element enters and leaves the window at most once, so the total work is $O(n)$.
+
+### Longest Substring Without Repeating Characters
+
+Find the length of the longest substring with all unique characters. Expand right to add characters; when a duplicate is found, shrink from the left until the duplicate is removed.
+
+<CodePlayground code={`def length_of_longest_substring(s):
+    """Find length of longest substring without repeating characters."""
+    char_set = set()
+    left = 0
+    best = 0
+
+    for right in range(len(s)):
+        # Shrink window until s[right] is no longer a duplicate
+        while s[right] in char_set:
+            char_set.discard(s[left])
+            left += 1
+        char_set.add(s[right])
+        best = max(best, right - left + 1)
+
+    return best
+
+tests = ["abcabcbb", "bbbbb", "pwwkew", ""]
+for s in tests:
+    print(f'"{s}" -> longest unique substring length: {length_of_longest_substring(s)}')`} title="Longest Substring Without Repeating Characters" />
+
+### Optimized Version with Hash Map
+
+Instead of shrinking one character at a time, jump the left pointer directly to the position after the last occurrence of the duplicate character.
+
+<CodePlayground code={`def length_of_longest_substring_opt(s):
+    """Optimized: jump left pointer using a hash map."""
+    last_seen = {}  # char -> most recent index
+    left = 0
+    best = 0
+
+    for right, char in enumerate(s):
+        if char in last_seen and last_seen[char] >= left:
+            left = last_seen[char] + 1
+        last_seen[char] = right
+        best = max(best, right - left + 1)
+
+    return best
+
+s = "abcabcbb"
+print(f'"{s}" -> {length_of_longest_substring_opt(s)}')
+
+s = "tmmzuxt"
+print(f'"{s}" -> {length_of_longest_substring_opt(s)}')`} title="Optimized with Hash Map" />
+
+### Minimum Window Substring
+
+Given strings $s$ and $t$, find the smallest substring of $s$ that contains all characters of $t$ (including duplicates). This is the classic "shrinkable" variable window: expand to satisfy the condition, then shrink to minimize.
+
+<CodePlayground code={`from collections import Counter
+
+def min_window(s, t):
+    """Find minimum window in s that contains all characters of t."""
+    if not t or not s:
+        return ""
+
+    need = Counter(t)
+    required = len(need)    # distinct chars we need
+    formed = 0              # distinct chars with enough count
+    window_counts = {}
+    left = 0
+    best = (float('inf'), 0, 0)  # (length, left, right)
+
+    for right in range(len(s)):
+        char = s[right]
+        window_counts[char] = window_counts.get(char, 0) + 1
+
+        if char in need and window_counts[char] == need[char]:
+            formed += 1
+
+        # Try to shrink from the left
+        while formed == required:
+            window_len = right - left + 1
+            if window_len < best[0]:
+                best = (window_len, left, right)
+
+            leaving = s[left]
+            window_counts[leaving] -= 1
+            if leaving in need and window_counts[leaving] < need[leaving]:
+                formed -= 1
+            left += 1
+
+    return "" if best[0] == float('inf') else s[best[1]:best[2] + 1]
+
+s, t = "ADOBECODEBANC", "ABC"
+print(f's="{s}", t="{t}"')
+print(f"Minimum window: \\"{min_window(s, t)}\\"")
+
+s2, t2 = "a", "a"
+print(f'\\ns="{s2}", t="{t2}"')
+print(f"Minimum window: \\"{min_window(s2, t2)}\\"")
+
+s3, t3 = "a", "aa"
+print(f'\\ns="{s3}", t="{t3}"')
+print(f"Minimum window: \\"{min_window(s3, t3)}\\"")
+`} title="Minimum Window Substring" />
+
+### Longest Substring with At Most k Distinct Characters
+
+<CodePlayground code={`def longest_k_distinct(s, k):
+    """Find longest substring with at most k distinct characters."""
+    freq = {}
+    left = 0
+    best = 0
+
+    for right in range(len(s)):
+        freq[s[right]] = freq.get(s[right], 0) + 1
+
+        while len(freq) > k:
+            freq[s[left]] -= 1
+            if freq[s[left]] == 0:
+                del freq[s[left]]
+            left += 1
+
+        best = max(best, right - left + 1)
+
+    return best
+
+s = "eceba"
+print(f'"{s}", k=2 -> {longest_k_distinct(s, 2)}')
+
+s2 = "aa"
+print(f'"{s2}", k=1 -> {longest_k_distinct(s2, 1)}')`} title="Longest Substring with At Most k Distinct Chars" />
+
+## Template Pattern Summary
+
+### Fixed-Size Window Template
+
+```python
+window_state = initialize with first k elements
+answer = evaluate(window_state)
+for i in range(k, n):
+    add element i to window_state
+    remove element i-k from window_state
+    answer = best(answer, evaluate(window_state))
+```
+
+### Variable-Size Window Template
+
+```python
+left = 0
+for right in range(n):
+    expand: add element at right to window
+    while window_condition_violated:
+        shrink: remove element at left from window
+        left += 1
+    update answer with current window [left..right]
+```
+
+## Complexity Summary
+
+| Problem | Brute Force | Sliding Window | Space |
+|---------|------------|---------------|-------|
+| Max sum subarray of size $k$ | $O(nk)$ | $O(n)$ | $O(1)$ |
+| Sliding window maximum | $O(nk)$ | $O(n)$ | $O(k)$ |
+| Longest substring no repeats | $O(n^2)$ | $O(n)$ | $O(\min(n, |\Sigma|))$ |
+| Minimum window substring | $O(n^2 \cdot |\Sigma|)$ | $O(n)$ | $O(|\Sigma|)$ |
+| Longest with $k$ distinct | $O(n^2)$ | $O(n)$ | $O(k)$ |
+
+Here $|\Sigma|$ denotes the alphabet size (26 for lowercase English, 128 for ASCII).
+
+## Common Pitfalls
+
+- **Forgetting to shrink** -- the inner `while` loop is essential for variable windows; without it you get incorrect answers
+- **Off-by-one in fixed windows** -- make sure the first window covers exactly indices $[0, k)$ before you start sliding
+- **Hash map cleanup** -- when a character count drops to 0, delete the key from the map to keep `len(freq)` accurate
+- **Confusing min vs max problems** -- for "minimum" answers, shrink after finding a valid window; for "maximum" answers, shrink only when the window becomes invalid
+
+## Key Takeaways
+
+- Sliding window exploits the **contiguity** of subarrays/substrings to update state incrementally in $O(1)$ per step
+- **Fixed-size** windows are simpler: just add the incoming element and remove the outgoing one
+- **Variable-size** windows use an expand/shrink loop and are the workhorse for substring problems
+- The amortized cost is $O(n)$ because each element enters and leaves the window at most once
+- Combining sliding window with a hash map is one of the most powerful patterns in string-based interview problems

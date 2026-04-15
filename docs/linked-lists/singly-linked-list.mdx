@@ -7,26 +7,72 @@ import CodePlayground from '@site/src/components/CodePlayground';
 
 # Singly Linked List
 
-A singly linked list is a linear data structure where each element (node) contains a value and a pointer to the next node. This page covers the Node class, list construction, traversal, insertion, and deletion operations.
+A singly linked list is a linear data structure where each element (called a **node**) stores a value and a reference to the next node in the sequence. Unlike arrays, linked list nodes are scattered throughout memory and connected via pointers.
 
-## Overview
+## Node Structure
 
-Unlike arrays, linked lists do not store elements in contiguous memory. Each node holds a reference to the next node, forming a chain. This makes insertion and deletion at the head O(1), but accessing an element by index requires traversal from the head.
+Each node in a singly linked list contains two fields:
 
-## Implementation
+- **data** -- the value stored in this node
+- **next** -- a pointer (reference) to the next node, or `None` if this is the last node
 
-<CodePlayground
-  code={`# Singly Linked List Implementation
-class Node:
+The list itself is accessed through a **head pointer** that references the first node. If `head` is `None`, the list is empty.
+
+Visually, a singly linked list looks like this:
+
+```
+head -> [10 | *] -> [20 | *] -> [30 | *] -> None
+```
+
+Each box represents a node. The left half holds the data, and the right half holds the pointer to the next node.
+
+## Arrays vs. Linked Lists
+
+Before diving into implementation, it helps to understand when you would choose a linked list over an array.
+
+| Feature | Array | Singly Linked List |
+|---|---|---|
+| Memory layout | Contiguous | Non-contiguous |
+| Access by index | $O(1)$ | $O(n)$ |
+| Insert at head | $O(n)$ (shift all) | $O(1)$ |
+| Insert at tail | $O(1)$ amortized | $O(n)$ without tail pointer |
+| Insert in middle | $O(n)$ | $O(n)$ search + $O(1)$ insert |
+| Delete at head | $O(n)$ (shift all) | $O(1)$ |
+| Delete in middle | $O(n)$ | $O(n)$ search + $O(1)$ delete |
+| Memory overhead | None | Extra pointer per node |
+| Cache performance | Excellent (locality) | Poor (scattered nodes) |
+
+**Choose a linked list** when you need frequent insertions/deletions at the head or when the collection size is highly dynamic. **Choose an array** when you need fast random access or when cache performance matters.
+
+## Full Implementation
+
+The following implementation covers all fundamental operations: insertion (head, tail, at position), deletion (by value, by position), search, traversal, and length.
+
+<CodePlayground code={`class Node:
+    """A single node in the linked list."""
     def __init__(self, data):
         self.data = data
         self.next = None
 
-class LinkedList:
+    def __repr__(self):
+        return f"Node({self.data})"
+
+
+class SinglyLinkedList:
+    """Singly linked list with head pointer."""
     def __init__(self):
         self.head = None
 
-    def append(self, data):
+    # --- Insertion Operations ---
+
+    def insert_at_head(self, data):
+        """Insert a new node at the beginning. O(1) time."""
+        new_node = Node(data)
+        new_node.next = self.head
+        self.head = new_node
+
+    def insert_at_tail(self, data):
+        """Insert a new node at the end. O(n) time."""
         new_node = Node(data)
         if not self.head:
             self.head = new_node
@@ -36,7 +82,70 @@ class LinkedList:
             curr = curr.next
         curr.next = new_node
 
+    def insert_at_position(self, data, position):
+        """Insert at a given 0-based position. O(n) time."""
+        if position == 0:
+            self.insert_at_head(data)
+            return
+        new_node = Node(data)
+        curr = self.head
+        for _ in range(position - 1):
+            if curr is None:
+                raise IndexError("Position out of range")
+            curr = curr.next
+        if curr is None:
+            raise IndexError("Position out of range")
+        new_node.next = curr.next
+        curr.next = new_node
+
+    # --- Deletion Operations ---
+
+    def delete_by_value(self, value):
+        """Delete the first node with the given value. O(n) time."""
+        if not self.head:
+            return False
+        if self.head.data == value:
+            self.head = self.head.next
+            return True
+        curr = self.head
+        while curr.next:
+            if curr.next.data == value:
+                curr.next = curr.next.next
+                return True
+            curr = curr.next
+        return False
+
+    def delete_at_position(self, position):
+        """Delete node at a 0-based position. O(n) time."""
+        if not self.head:
+            raise IndexError("List is empty")
+        if position == 0:
+            self.head = self.head.next
+            return
+        curr = self.head
+        for _ in range(position - 1):
+            if curr.next is None:
+                raise IndexError("Position out of range")
+            curr = curr.next
+        if curr.next is None:
+            raise IndexError("Position out of range")
+        curr.next = curr.next.next
+
+    # --- Search and Traversal ---
+
+    def search(self, value):
+        """Return the 0-based index of value, or -1 if not found. O(n)."""
+        curr = self.head
+        index = 0
+        while curr:
+            if curr.data == value:
+                return index
+            curr = curr.next
+            index += 1
+        return -1
+
     def traverse(self):
+        """Return all elements as a list. O(n) time."""
         elements = []
         curr = self.head
         while curr:
@@ -44,25 +153,240 @@ class LinkedList:
             curr = curr.next
         return elements
 
-# Usage
-ll = LinkedList()
-for val in [1, 2, 3, 4, 5]:
-    ll.append(val)
+    def __len__(self):
+        count = 0
+        curr = self.head
+        while curr:
+            count += 1
+            curr = curr.next
+        return count
 
-print("Linked List:", ll.traverse())`}
-  title="Singly Linked List Example"
-/>
+    def __repr__(self):
+        return " -> ".join(str(x) for x in self.traverse()) + " -> None"
 
-## Complexity
 
-| Operation         | Time | Space |
-|-------------------|------|-------|
-| Access by index   | O(n) | O(1)  |
-| Search            | O(n) | O(1)  |
-| Insert at head    | O(1) | O(1)  |
-| Insert at tail    | O(n) | O(1)  |
-| Delete from head  | O(1) | O(1)  |
+# --- Demo ---
+ll = SinglyLinkedList()
+for v in [10, 20, 30, 40, 50]:
+    ll.insert_at_tail(v)
+print("Initial list:", ll)
+print("Length:", len(ll))
 
----
+ll.insert_at_head(5)
+print("After insert_at_head(5):", ll)
 
-*Full content coming soon.*
+ll.insert_at_position(25, 3)
+print("After insert_at_position(25, 3):", ll)
+
+ll.delete_by_value(30)
+print("After delete_by_value(30):", ll)
+
+ll.delete_at_position(0)
+print("After delete_at_position(0):", ll)
+
+print("Search for 40:", "found at index", ll.search(40))
+print("Search for 99:", "not found" if ll.search(99) == -1 else ll.search(99))`} title="Complete Singly Linked List Implementation" />
+
+## How Insertion Works
+
+**Insert at head** is the fastest operation. You create a new node, point its `next` to the current head, and update the head pointer. Time: $O(1)$.
+
+**Insert at tail** requires traversing the entire list to find the last node. Once found, set `last.next = new_node`. Time: $O(n)$. You can reduce this to $O(1)$ by maintaining a **tail pointer**, but the basic implementation above keeps things simple.
+
+**Insert at position** walks $k$ steps from the head, then splices in the new node. The key operation is:
+
+$$
+\text{new\_node.next} = \text{curr.next}, \quad \text{curr.next} = \text{new\_node}
+$$
+
+## How Deletion Works
+
+Deletion in a singly linked list requires finding the node **before** the target, because you need to update the predecessor's `next` pointer. This is why having a `prev` pointer (as in doubly linked lists) can simplify deletion.
+
+A common trick is to use a **dummy head node** to avoid special-casing deletion of the first element:
+
+<CodePlayground code={`class Node:
+    def __init__(self, data):
+        self.data = data
+        self.next = None
+
+def delete_with_dummy(head, value):
+    """Delete using a dummy head to simplify edge cases."""
+    dummy = Node(0)
+    dummy.next = head
+    prev = dummy
+    curr = head
+
+    while curr:
+        if curr.data == value:
+            prev.next = curr.next
+            return dummy.next  # new head
+        prev = curr
+        curr = curr.next
+
+    return dummy.next  # value not found, head unchanged
+
+# Build list: 1 -> 2 -> 3 -> 4 -> None
+head = Node(1)
+head.next = Node(2)
+head.next.next = Node(3)
+head.next.next.next = Node(4)
+
+# Delete head element (value 1)
+head = delete_with_dummy(head, 1)
+
+# Print result
+curr = head
+result = []
+while curr:
+    result.append(str(curr.data))
+    curr = curr.next
+print("After deleting 1:", " -> ".join(result) + " -> None")`} title="Deletion with Dummy Head" />
+
+## Reversing a Linked List
+
+Reversing a singly linked list is one of the most common interview questions. The iterative approach uses three pointers -- `prev`, `curr`, and `next_node` -- and runs in $O(n)$ time with $O(1)$ space.
+
+<CodePlayground code={`class Node:
+    def __init__(self, data):
+        self.data = data
+        self.next = None
+
+def reverse_iterative(head):
+    """Reverse linked list iteratively. O(n) time, O(1) space."""
+    prev = None
+    curr = head
+    while curr:
+        next_node = curr.next   # save next
+        curr.next = prev        # reverse pointer
+        prev = curr             # advance prev
+        curr = next_node        # advance curr
+    return prev  # new head
+
+def reverse_recursive(head):
+    """Reverse linked list recursively. O(n) time, O(n) space (call stack)."""
+    if not head or not head.next:
+        return head
+    new_head = reverse_recursive(head.next)
+    head.next.next = head
+    head.next = None
+    return new_head
+
+def to_list(head):
+    result = []
+    while head:
+        result.append(head.data)
+        head = head.next
+    return result
+
+# Build: 1 -> 2 -> 3 -> 4 -> 5
+head = Node(1)
+curr = head
+for v in [2, 3, 4, 5]:
+    curr.next = Node(v)
+    curr = curr.next
+
+print("Original:", to_list(head))
+head = reverse_iterative(head)
+print("After iterative reverse:", to_list(head))
+head = reverse_recursive(head)
+print("After recursive reverse:", to_list(head))`} title="Reversing a Linked List" />
+
+The iterative approach processes each node exactly once. At each step:
+
+1. Save `curr.next` so we do not lose the rest of the list
+2. Point `curr.next` back to `prev` (reversing the link)
+3. Move `prev` and `curr` forward
+
+## Finding the Middle Node
+
+Use the **fast and slow pointer** technique: the slow pointer moves one step at a time while the fast pointer moves two steps. When fast reaches the end, slow is at the middle.
+
+<CodePlayground code={`class Node:
+    def __init__(self, data):
+        self.data = data
+        self.next = None
+
+def find_middle(head):
+    """Find the middle node using slow/fast pointers. O(n) time, O(1) space."""
+    slow = fast = head
+    while fast and fast.next:
+        slow = slow.next
+        fast = fast.next.next
+    return slow.data if slow else None
+
+# Build: 1 -> 2 -> 3 -> 4 -> 5
+head = Node(1)
+curr = head
+for v in [2, 3, 4, 5]:
+    curr.next = Node(v)
+    curr = curr.next
+
+print("Middle of [1,2,3,4,5]:", find_middle(head))
+
+# Build: 1 -> 2 -> 3 -> 4 -> 5 -> 6
+curr.next = Node(6)
+print("Middle of [1,2,3,4,5,6]:", find_middle(head))`} title="Find Middle Node" />
+
+For a list of length $n$, the slow pointer advances $\lfloor n/2 \rfloor$ times. This technique is a building block for many linked list algorithms (merge sort, palindrome check, etc.).
+
+## Detecting a Cycle
+
+A cycle exists when a node's `next` pointer references an earlier node. Floyd's cycle detection algorithm uses the same fast/slow pointer approach.
+
+<CodePlayground code={`class Node:
+    def __init__(self, data):
+        self.data = data
+        self.next = None
+
+def has_cycle(head):
+    """Detect cycle using Floyd's algorithm. O(n) time, O(1) space."""
+    slow = fast = head
+    while fast and fast.next:
+        slow = slow.next
+        fast = fast.next.next
+        if slow == fast:
+            return True
+    return False
+
+# Build a list with a cycle: 1 -> 2 -> 3 -> 4 -> 5 -> back to 3
+nodes = [Node(i) for i in range(1, 6)]
+for i in range(len(nodes) - 1):
+    nodes[i].next = nodes[i + 1]
+nodes[4].next = nodes[2]  # cycle: 5 -> 3
+
+print("Has cycle:", has_cycle(nodes[0]))
+
+# Build a list without a cycle
+head = Node(1)
+head.next = Node(2)
+head.next.next = Node(3)
+print("Has cycle:", has_cycle(head))`} title="Cycle Detection (Floyd's Algorithm)" />
+
+**Why it works:** If there is a cycle of length $c$, the fast pointer gains one step per iteration on the slow pointer. After at most $O(n)$ steps, the fast pointer "laps" the slow pointer inside the cycle.
+
+## Complexity Summary
+
+| Operation | Time | Space |
+|---|---|---|
+| Insert at head | $O(1)$ | $O(1)$ |
+| Insert at tail | $O(n)$ | $O(1)$ |
+| Insert at position $k$ | $O(k)$ | $O(1)$ |
+| Delete at head | $O(1)$ | $O(1)$ |
+| Delete by value | $O(n)$ | $O(1)$ |
+| Search | $O(n)$ | $O(1)$ |
+| Access by index | $O(n)$ | $O(1)$ |
+| Reverse | $O(n)$ | $O(1)$ iterative |
+| Find middle | $O(n)$ | $O(1)$ |
+| Detect cycle | $O(n)$ | $O(1)$ |
+
+## Key Takeaways
+
+- A singly linked list stores elements as nodes linked by `next` pointers, offering $O(1)$ head insertion and deletion at the cost of $O(n)$ random access.
+- Always handle edge cases: empty list, single-node list, and operations on the head node.
+- The **dummy head** technique eliminates special-case code for head deletion and insertion.
+- **Reversal** is a fundamental operation -- master both the iterative (three-pointer) and recursive approaches.
+- The **fast/slow pointer** pattern enables $O(1)$-space algorithms for finding the middle node and detecting cycles.
+- Singly linked lists are the foundation for stacks, queues, and many advanced data structures.
+
+**Next:** [Doubly Linked List](./doubly-linked-list)

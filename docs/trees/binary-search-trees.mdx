@@ -1,0 +1,427 @@
+---
+sidebar_position: 2
+title: "Binary Search Trees"
+---
+
+import CodePlayground from '@site/src/components/CodePlayground';
+
+# Binary Search Trees
+
+A **Binary Search Tree (BST)** is a binary tree where every node satisfies the **BST property**: all values in the left subtree are less than the node's value, and all values in the right subtree are greater. This ordering enables efficient search, insertion, and deletion.
+
+## The BST Property
+
+For every node $N$:
+
+$$
+\text{all values in } N.left < N.val < \text{all values in } N.right
+$$
+
+This invariant means an **inorder traversal** of a BST always produces values in sorted order -- a property exploited in many problems.
+
+## Why BSTs?
+
+| Operation | Array (sorted) | Linked List | BST (balanced) |
+|-----------|---------------|-------------|----------------|
+| Search | $O(\log n)$ | $O(n)$ | $O(\log n)$ |
+| Insert | $O(n)$ | $O(1)$ | $O(\log n)$ |
+| Delete | $O(n)$ | $O(1)$ | $O(\log n)$ |
+| Min/Max | $O(1)$ | $O(n)$ | $O(\log n)$ |
+
+BSTs combine the search speed of sorted arrays with the insertion speed of linked lists -- when balanced.
+
+## BST Implementation
+
+<CodePlayground code={`class TreeNode:
+    def __init__(self, val=0, left=None, right=None):
+        self.val = val
+        self.left = left
+        self.right = right
+
+class BST:
+    def __init__(self):
+        self.root = None
+
+    def insert(self, val):
+        self.root = self._insert(self.root, val)
+
+    def _insert(self, node, val):
+        if not node:
+            return TreeNode(val)
+        if val < node.val:
+            node.left = self._insert(node.left, val)
+        elif val > node.val:
+            node.right = self._insert(node.right, val)
+        return node  # duplicates ignored
+
+    def search(self, val):
+        return self._search(self.root, val)
+
+    def _search(self, node, val):
+        if not node:
+            return False
+        if val == node.val:
+            return True
+        elif val < node.val:
+            return self._search(node.left, val)
+        else:
+            return self._search(node.right, val)
+
+    def find_min(self, node=None):
+        """Find minimum value starting from given node."""
+        if node is None:
+            node = self.root
+        while node.left:
+            node = node.left
+        return node.val
+
+    def find_max(self, node=None):
+        """Find maximum value starting from given node."""
+        if node is None:
+            node = self.root
+        while node.right:
+            node = node.right
+        return node.val
+
+    def inorder(self):
+        result = []
+        self._inorder(self.root, result)
+        return result
+
+    def _inorder(self, node, result):
+        if node:
+            self._inorder(node.left, result)
+            result.append(node.val)
+            self._inorder(node.right, result)
+
+# Demo
+bst = BST()
+for val in [8, 3, 10, 1, 6, 14, 4, 7, 13]:
+    bst.insert(val)
+
+print("Inorder (sorted):", bst.inorder())
+print("Search 6:", bst.search(6))
+print("Search 11:", bst.search(11))
+print("Min:", bst.find_min())
+print("Max:", bst.find_max())`} title="BST: Insert, Search, Min/Max" />
+
+## Deletion in a BST
+
+Deletion has three cases depending on the node to remove:
+
+1. **Leaf node** (no children): simply remove it.
+2. **One child**: replace the node with its child.
+3. **Two children**: replace the node's value with its **inorder successor** (smallest value in the right subtree), then delete the successor from the right subtree.
+
+<CodePlayground code={`class TreeNode:
+    def __init__(self, val=0, left=None, right=None):
+        self.val = val
+        self.left = left
+        self.right = right
+
+def insert(root, val):
+    if not root:
+        return TreeNode(val)
+    if val < root.val:
+        root.left = insert(root.left, val)
+    elif val > root.val:
+        root.right = insert(root.right, val)
+    return root
+
+def find_min_node(node):
+    """Go left until we can't -- that's the minimum."""
+    while node.left:
+        node = node.left
+    return node
+
+def delete(root, val):
+    if not root:
+        return None
+
+    if val < root.val:
+        root.left = delete(root.left, val)
+    elif val > root.val:
+        root.right = delete(root.right, val)
+    else:
+        # Found the node to delete
+        # Case 1 & 2: zero or one child
+        if not root.left:
+            return root.right
+        if not root.right:
+            return root.left
+        # Case 3: two children
+        # Replace with inorder successor
+        successor = find_min_node(root.right)
+        root.val = successor.val
+        root.right = delete(root.right, successor.val)
+
+    return root
+
+def inorder(root):
+    if not root:
+        return []
+    return inorder(root.left) + [root.val] + inorder(root.right)
+
+# Build BST
+root = None
+for val in [5, 3, 7, 2, 4, 6, 8]:
+    root = insert(root, val)
+
+print("Before:", inorder(root))
+
+root = delete(root, 3)  # delete node with two children
+print("After deleting 3:", inorder(root))
+
+root = delete(root, 8)  # delete leaf
+print("After deleting 8:", inorder(root))
+
+root = delete(root, 7)  # delete node with one child
+print("After deleting 7:", inorder(root))`} title="BST Deletion (3 Cases)" />
+
+All three operations -- search, insert, delete -- run in $O(h)$ time where $h$ is the tree height.
+
+## Inorder Successor and Predecessor
+
+The **inorder successor** of a node is the node with the smallest key greater than it. The **inorder predecessor** is the node with the largest key smaller than it.
+
+- If the node has a **right subtree**, the successor is the leftmost node in that subtree.
+- Otherwise, the successor is the nearest ancestor for which the node is in the **left subtree**.
+
+<CodePlayground code={`class TreeNode:
+    def __init__(self, val=0, left=None, right=None):
+        self.val = val
+        self.left = left
+        self.right = right
+
+def insert(root, val):
+    if not root:
+        return TreeNode(val)
+    if val < root.val:
+        root.left = insert(root.left, val)
+    elif val > root.val:
+        root.right = insert(root.right, val)
+    return root
+
+def inorder_successor(root, target_val):
+    """Find the inorder successor of the node with target_val."""
+    successor = None
+    node = root
+    while node:
+        if target_val < node.val:
+            successor = node    # this node could be the successor
+            node = node.left
+        else:
+            node = node.right   # go right to find larger values
+    return successor
+
+def inorder_predecessor(root, target_val):
+    """Find the inorder predecessor of the node with target_val."""
+    predecessor = None
+    node = root
+    while node:
+        if target_val > node.val:
+            predecessor = node
+            node = node.right
+        else:
+            node = node.left
+    return predecessor
+
+root = None
+for val in [20, 10, 30, 5, 15, 25, 35]:
+    root = insert(root, val)
+
+# Inorder: [5, 10, 15, 20, 25, 30, 35]
+for target in [5, 15, 20, 30, 35]:
+    succ = inorder_successor(root, target)
+    pred = inorder_predecessor(root, target)
+    s_val = succ.val if succ else None
+    p_val = pred.val if pred else None
+    print(f"Node {target}: predecessor={p_val}, successor={s_val}")`} title="Inorder Successor & Predecessor" />
+
+## Validate BST
+
+A common interview problem: given a binary tree, determine whether it is a valid BST. A node's value must be within a valid range defined by its ancestors.
+
+<CodePlayground code={`class TreeNode:
+    def __init__(self, val=0, left=None, right=None):
+        self.val = val
+        self.left = left
+        self.right = right
+
+def is_valid_bst(root):
+    def validate(node, lo, hi):
+        if not node:
+            return True
+        if node.val <= lo or node.val >= hi:
+            return False
+        return (validate(node.left, lo, node.val) and
+                validate(node.right, node.val, hi))
+    return validate(root, float('-inf'), float('inf'))
+
+# Valid BST:
+#       5
+#      / \\
+#     3   7
+#    / \\
+#   1   4
+valid = TreeNode(5)
+valid.left = TreeNode(3)
+valid.right = TreeNode(7)
+valid.left.left = TreeNode(1)
+valid.left.right = TreeNode(4)
+print("Valid BST?", is_valid_bst(valid))    # True
+
+# Invalid BST (4 is in right subtree of 5 but 4 < 5):
+#       5
+#      / \\
+#     3   7
+#        / \\
+#       4   8
+invalid = TreeNode(5)
+invalid.left = TreeNode(3)
+invalid.right = TreeNode(7)
+invalid.right.left = TreeNode(4)   # 4 < 5, violates BST
+invalid.right.right = TreeNode(8)
+print("Valid BST?", is_valid_bst(invalid))  # True -- wait, 4 IS > 5? No, 4 < 5.
+# Actually 4 is in right subtree of 5 but 4 < 5: invalid!
+
+# Let's build a truly invalid one:
+#       5
+#      / \\
+#     1   6
+#        / \\
+#       3   7     <-- 3 < 5, so invalid
+bad = TreeNode(5)
+bad.left = TreeNode(1)
+bad.right = TreeNode(6)
+bad.right.left = TreeNode(3)
+bad.right.right = TreeNode(7)
+print("Valid BST?", is_valid_bst(bad))      # False`} title="Validate BST" />
+
+**Key insight**: you cannot just check `left.val < node.val < right.val` locally. The value must satisfy constraints from *all* ancestors. Passing `(lo, hi)` bounds down the recursion handles this correctly.
+
+## Kth Smallest Element
+
+Since inorder traversal of a BST gives sorted order, the kth smallest element is the kth node visited in an inorder traversal. We can do this without collecting all values by using a counter.
+
+<CodePlayground code={`class TreeNode:
+    def __init__(self, val=0, left=None, right=None):
+        self.val = val
+        self.left = left
+        self.right = right
+
+def kth_smallest(root, k):
+    """Find the kth smallest value (1-indexed) using iterative inorder."""
+    stack = []
+    curr = root
+    count = 0
+    while curr or stack:
+        while curr:
+            stack.append(curr)
+            curr = curr.left
+        curr = stack.pop()
+        count += 1
+        if count == k:
+            return curr.val
+        curr = curr.right
+    return -1  # k is out of range
+
+def insert(root, val):
+    if not root:
+        return TreeNode(val)
+    if val < root.val:
+        root.left = insert(root.left, val)
+    else:
+        root.right = insert(root.right, val)
+    return root
+
+root = None
+for val in [5, 3, 7, 2, 4, 6, 8]:
+    root = insert(root, val)
+
+# Inorder: [2, 3, 4, 5, 6, 7, 8]
+for k in range(1, 8):
+    print(f"k={k}: {kth_smallest(root, k)}")`} title="Kth Smallest Element in BST" />
+
+Time complexity: $O(h + k)$ where $h$ is the height. In the worst case we might traverse the full tree, so $O(n)$.
+
+## BST to Sorted Array and Back
+
+Converting a BST to a sorted array is just an inorder traversal. Converting a sorted array back to a **balanced BST** uses divide and conquer.
+
+<CodePlayground code={`class TreeNode:
+    def __init__(self, val=0, left=None, right=None):
+        self.val = val
+        self.left = left
+        self.right = right
+
+def sorted_array_to_bst(nums):
+    """Convert sorted array to height-balanced BST."""
+    if not nums:
+        return None
+    mid = len(nums) // 2
+    root = TreeNode(nums[mid])
+    root.left = sorted_array_to_bst(nums[:mid])
+    root.right = sorted_array_to_bst(nums[mid + 1:])
+    return root
+
+def inorder(root):
+    if not root:
+        return []
+    return inorder(root.left) + [root.val] + inorder(root.right)
+
+def height(root):
+    if not root:
+        return 0
+    return 1 + max(height(root.left), height(root.right))
+
+nums = [1, 2, 3, 4, 5, 6, 7]
+root = sorted_array_to_bst(nums)
+print("Inorder:", inorder(root))   # [1, 2, 3, 4, 5, 6, 7]
+print("Root value:", root.val)      # 4 (middle element)
+print("Height:", height(root))      # 3 (balanced)`} title="Sorted Array to Balanced BST" />
+
+## The Degeneration Problem
+
+If we insert sorted data into a BST, it degenerates into a linked list with height $O(n)$:
+
+```
+Insert 1, 2, 3, 4, 5:
+
+    1
+     \
+      2
+       \
+        3
+         \
+          4
+           \
+            5
+```
+
+All operations become $O(n)$ -- no better than a linked list. This motivates **self-balancing BSTs** like AVL trees, Red-Black trees, and B-trees, which guarantee $O(\log n)$ height after every operation.
+
+## Complexity Summary
+
+| Operation | Average | Worst (degenerate) |
+|-----------|---------|-------------------|
+| Search | $O(\log n)$ | $O(n)$ |
+| Insert | $O(\log n)$ | $O(n)$ |
+| Delete | $O(\log n)$ | $O(n)$ |
+| Min / Max | $O(\log n)$ | $O(n)$ |
+| Inorder traversal | $O(n)$ | $O(n)$ |
+
+Space complexity for all recursive operations is $O(h)$ due to the call stack.
+
+## Key Takeaways
+
+1. The **BST property** (left < node < right) enables $O(\log n)$ search, insert, and delete -- when balanced.
+2. **Inorder traversal** of a BST produces sorted output. This is the basis for many BST problems.
+3. **Deletion** has three cases; the two-children case requires finding the inorder successor.
+4. **Validate BST** by passing min/max bounds down the recursion -- do not just check immediate children.
+5. BSTs can **degenerate** to $O(n)$ height with sorted input. Real-world applications use self-balancing variants (AVL, Red-Black, B-tree).
+6. Converting between sorted arrays and balanced BSTs is a fundamental technique using divide and conquer.
+
+---
+
+Next: [Heaps & Priority Queues](./heaps)

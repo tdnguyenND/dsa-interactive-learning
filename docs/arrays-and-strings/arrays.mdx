@@ -7,52 +7,350 @@ import CodePlayground from '@site/src/components/CodePlayground';
 
 # Arrays
 
-Arrays are one of the most fundamental data structures in computer science. This page covers how arrays store elements in contiguous memory, how to access elements by index, and common operations like insertion, deletion, and traversal.
+Arrays are the most fundamental data structure in computer science. Mastering arrays is essential because nearly every other data structure builds on top of them, and array-based problems appear in the majority of coding interviews.
 
-## Overview
+## What Is an Array?
 
-An array is a collection of elements stored at contiguous memory locations. Elements can be accessed in constant time using their index, making arrays ideal for random access patterns. However, inserting or deleting elements in the middle requires shifting elements, which can be costly.
+An **array** is a collection of elements stored at **contiguous memory locations**. Each element occupies the same amount of space, which means the address of any element can be calculated directly from its index:
 
-## Implementation
+$$\text{address}(i) = \text{base\_address} + i \times \text{element\_size}$$
 
-<CodePlayground
-  code={`# Basic Array Operations in Python
+This formula is why array access is $O(1)$ -- the CPU can jump directly to any position without scanning through preceding elements.
+
+### Memory Layout
+
+Consider an array `[10, 20, 30, 40, 50]` where each integer occupies 8 bytes and the base address is `0x1000`:
+
+| Index | Value | Memory Address |
+|-------|-------|---------------|
+| 0     | 10    | 0x1000        |
+| 1     | 20    | 0x1008        |
+| 2     | 30    | 0x1010        |
+| 3     | 40    | 0x1018        |
+| 4     | 50    | 0x1020        |
+
+This contiguity also benefits **cache performance**: when the CPU loads one element, nearby elements are loaded into the cache line automatically, making sequential traversal extremely fast.
+
+## Static vs Dynamic Arrays
+
+**Static arrays** have a fixed size determined at creation time (e.g., C arrays, Java arrays). If you need more space, you must allocate a new array and copy elements over.
+
+**Dynamic arrays** (e.g., Python `list`, Java `ArrayList`, C++ `std::vector`) resize automatically. When the internal buffer is full, the array allocates a new buffer (typically 2x the current size) and copies all elements. This strategy gives **amortized $O(1)$** append performance.
+
+### How Python Lists Work Internally
+
+Python's `list` is a dynamic array of pointers. Key details:
+
+- Each slot holds a **pointer** to a Python object (8 bytes on 64-bit systems)
+- When capacity is exceeded, CPython over-allocates by roughly $\frac{n}{8} + 6$ slots
+- The growth pattern: 0, 4, 8, 16, 24, 32, 40, 52, 64, 76 ...
+- This guarantees amortized $O(1)$ append while keeping memory overhead reasonable
+
+<CodePlayground code={`import sys
+
+# Observe how Python list memory grows
+sizes = []
+lst = []
+for i in range(25):
+    lst.append(i)
+    sizes.append(sys.getsizeof(lst))
+
+print("Length | Size (bytes) | Capacity change")
+print("-" * 45)
+prev_size = 0
+for i, size in enumerate(sizes):
+    marker = " <-- grew" if size != prev_size else ""
+    print(f"  {i+1:4d} | {size:12d} | {marker}")
+    prev_size = size`} title="Python List Memory Growth" />
+
+## Common Operations and Complexity
+
+| Operation | Time Complexity | Notes |
+|-----------|----------------|-------|
+| Access by index | $O(1)$ | Direct address calculation |
+| Search (unsorted) | $O(n)$ | Must scan all elements |
+| Search (sorted) | $O(\log n)$ | Binary search |
+| Append to end | $O(1)$ amortized | Occasional $O(n)$ resize |
+| Insert at index $i$ | $O(n)$ | Shift elements right |
+| Delete at index $i$ | $O(n)$ | Shift elements left |
+| Delete from end | $O(1)$ | No shifting needed |
+| Copy | $O(n)$ | Must copy all elements |
+
+<CodePlayground code={`# Core Array Operations
 arr = [10, 20, 30, 40, 50]
 
-# Access by index - O(1)
-print("Element at index 2:", arr[2])
+# Access - O(1)
+print("Access index 2:", arr[2])
 
-# Append to end - O(1) amortized
-arr.append(60)
-print("After append:", arr)
+# Search - O(n) for unsorted
+def linear_search(arr, target):
+    for i, val in enumerate(arr):
+        if val == target:
+            return i
+    return -1
+
+print("Index of 30:", linear_search(arr, 30))
+print("Index of 99:", linear_search(arr, 99))
 
 # Insert at index - O(n)
-arr.insert(1, 15)
-print("After insert at index 1:", arr)
+arr.insert(2, 25)
+print("After insert 25 at index 2:", arr)
 
-# Remove element - O(n)
-arr.remove(30)
-print("After removing 30:", arr)
+# Delete by value - O(n)
+arr.remove(25)
+print("After removing 25:", arr)
 
-# Traverse the array - O(n)
-print("All elements:")
-for i, val in enumerate(arr):
-    print(f"  Index {i}: {val}")`}
-  title="Arrays Example"
-/>
+# Append - O(1) amortized
+arr.append(60)
+print("After append 60:", arr)
 
-## Complexity
+# Pop from end - O(1)
+arr.pop()
+print("After pop:", arr)
 
-| Operation      | Time   | Space |
-|----------------|--------|-------|
-| Access by index | O(1)  | O(1)  |
-| Search          | O(n)  | O(1)  |
-| Insert at end   | O(1)* | O(1)  |
-| Insert at index | O(n)  | O(1)  |
-| Delete          | O(n)  | O(1)  |
+# Slicing - O(k) where k is slice length
+print("Slice [1:4]:", arr[1:4])`} title="Basic Array Operations" />
 
-*Amortized time complexity.
+## Essential Array Algorithms
 
----
+### Array Reversal
 
-*Full content coming soon.*
+Reverse an array in-place using two pointers swapping from both ends toward the center. This runs in $O(n)$ time and $O(1)$ space.
+
+<CodePlayground code={`def reverse_array(arr):
+    """Reverse array in-place using two pointers."""
+    left, right = 0, len(arr) - 1
+    while left < right:
+        arr[left], arr[right] = arr[right], arr[left]
+        left += 1
+        right -= 1
+
+arr = [1, 2, 3, 4, 5, 6, 7]
+print("Original:", arr)
+reverse_array(arr)
+print("Reversed:", arr)`} title="Array Reversal (In-Place)" />
+
+### Array Rotation
+
+Rotate an array to the right by $k$ positions. The elegant approach uses three reversals.
+
+For example, rotating `[1,2,3,4,5,6,7]` by $k=3$:
+1. Reverse entire array: `[7,6,5,4,3,2,1]`
+2. Reverse first $k$ elements: `[5,6,7,4,3,2,1]`
+3. Reverse remaining elements: `[5,6,7,1,2,3,4]`
+
+This runs in $O(n)$ time and $O(1)$ space.
+
+<CodePlayground code={`def rotate_array(arr, k):
+    """Rotate array right by k positions using reversal."""
+    n = len(arr)
+    k = k % n  # Handle k > n
+
+    def reverse(arr, start, end):
+        while start < end:
+            arr[start], arr[end] = arr[end], arr[start]
+            start += 1
+            end -= 1
+
+    # Three reversals
+    reverse(arr, 0, n - 1)     # Reverse all
+    reverse(arr, 0, k - 1)     # Reverse first k
+    reverse(arr, k, n - 1)     # Reverse rest
+
+arr = [1, 2, 3, 4, 5, 6, 7]
+print("Original:", arr)
+
+rotate_array(arr, 3)
+print("Rotated by 3:", arr)
+
+# Verify with another example
+arr2 = [1, 2, 3, 4, 5]
+rotate_array(arr2, 2)
+print("[1,2,3,4,5] rotated by 2:", arr2)`} title="Array Rotation (Three Reversals)" />
+
+### Kadane's Algorithm -- Maximum Subarray Sum
+
+Find the contiguous subarray with the largest sum. The key insight: at each position, either extend the current subarray or start a new one.
+
+$$\text{current\_sum}(i) = \max(a_i, \; \text{current\_sum}(i-1) + a_i)$$
+
+Time: $O(n)$, Space: $O(1)$.
+
+<CodePlayground code={`def max_subarray(nums):
+    """Kadane's Algorithm: find maximum subarray sum."""
+    max_sum = nums[0]
+    current_sum = nums[0]
+
+    # Track subarray boundaries for demonstration
+    start = end = temp_start = 0
+
+    for i in range(1, len(nums)):
+        if current_sum + nums[i] < nums[i]:
+            # Start new subarray
+            current_sum = nums[i]
+            temp_start = i
+        else:
+            # Extend current subarray
+            current_sum += nums[i]
+
+        if current_sum > max_sum:
+            max_sum = current_sum
+            start = temp_start
+            end = i
+
+    return max_sum, start, end
+
+nums = [-2, 1, -3, 4, -1, 2, 1, -5, 4]
+max_sum, start, end = max_subarray(nums)
+print(f"Array: {nums}")
+print(f"Max subarray sum: {max_sum}")
+print(f"Subarray: {nums[start:end+1]} (indices {start} to {end})")
+
+# Walk through the algorithm step by step
+print("\\nStep-by-step:")
+current = nums[0]
+best = nums[0]
+for i in range(1, len(nums)):
+    current = max(nums[i], current + nums[i])
+    best = max(best, current)
+    print(f"  i={i}, nums[i]={nums[i]:3d}, current_sum={current:3d}, max_sum={best:3d}")`} title="Kadane's Algorithm" />
+
+### Dutch National Flag (3-Way Partition)
+
+Partition an array of 0s, 1s, and 2s in a single pass. Uses three pointers: `low`, `mid`, and `high`.
+
+- Elements before `low`: all 0s
+- Elements between `low` and `mid`: all 1s
+- Elements after `high`: all 2s
+
+Time: $O(n)$, Space: $O(1)$.
+
+<CodePlayground code={`def dutch_national_flag(arr):
+    """Sort array of 0s, 1s, 2s in single pass."""
+    low = mid = 0
+    high = len(arr) - 1
+
+    while mid <= high:
+        if arr[mid] == 0:
+            arr[low], arr[mid] = arr[mid], arr[low]
+            low += 1
+            mid += 1
+        elif arr[mid] == 1:
+            mid += 1
+        else:  # arr[mid] == 2
+            arr[mid], arr[high] = arr[high], arr[mid]
+            high -= 1
+            # Don't increment mid -- swapped element needs checking
+
+    return arr
+
+arr = [2, 0, 1, 2, 1, 0, 0, 2, 1, 0]
+print("Before:", arr)
+dutch_national_flag(arr)
+print("After: ", arr)
+
+# Another example
+arr2 = [1, 0, 2, 1, 0, 2, 0, 1]
+print("\\nBefore:", arr2)
+dutch_national_flag(arr2)
+print("After: ", arr2)`} title="Dutch National Flag Problem" />
+
+## Multi-Dimensional Arrays
+
+A 2D array (matrix) is an array of arrays. In Python, represent it as a list of lists. Access element at row $r$, column $c$ with `matrix[r][c]`.
+
+<CodePlayground code={`# Creating and traversing a 2D array
+rows, cols = 3, 4
+matrix = [[i * cols + j + 1 for j in range(cols)] for i in range(rows)]
+
+print("Matrix:")
+for row in matrix:
+    print(" ", row)
+
+# Access element at row 1, col 2
+print(f"\\nmatrix[1][2] = {matrix[1][2]}")
+
+# Transpose: swap rows and columns
+def transpose(matrix):
+    rows = len(matrix)
+    cols = len(matrix[0])
+    return [[matrix[r][c] for r in range(rows)] for c in range(cols)]
+
+transposed = transpose(matrix)
+print("\\nTransposed:")
+for row in transposed:
+    print(" ", row)
+
+# Rotate 90 degrees clockwise: transpose then reverse each row
+def rotate_90(matrix):
+    n = len(matrix)
+    # Transpose
+    for i in range(n):
+        for j in range(i + 1, n):
+            matrix[i][j], matrix[j][i] = matrix[j][i], matrix[i][j]
+    # Reverse each row
+    for row in matrix:
+        row.reverse()
+
+square = [[1, 2, 3], [4, 5, 6], [7, 8, 9]]
+print("\\nOriginal square matrix:")
+for row in square:
+    print(" ", row)
+rotate_90(square)
+print("\\nAfter 90-degree clockwise rotation:")
+for row in square:
+    print(" ", row)`} title="2D Arrays and Matrix Operations" />
+
+## Common Pitfalls
+
+### Off-by-One Errors
+
+The most frequent bug with arrays. Remember: for an array of length $n$, valid indices are $0$ to $n-1$.
+
+```python
+arr = [1, 2, 3, 4, 5]
+# WRONG: IndexError
+# for i in range(len(arr) + 1): ...
+
+# CORRECT
+for i in range(len(arr)):  # 0, 1, 2, 3, 4
+    pass
+```
+
+### Modifying While Iterating
+
+Never add or remove elements from a list while iterating over it. Use a copy or build a new list.
+
+```python
+arr = [1, 2, 3, 4, 5, 6]
+# WRONG: skips elements
+# for x in arr:
+#     if x % 2 == 0:
+#         arr.remove(x)
+
+# CORRECT: list comprehension creates new list
+arr = [x for x in arr if x % 2 != 0]
+```
+
+### Shallow vs Deep Copy
+
+Assigning a list to a new variable creates a **reference**, not a copy. Use slicing or `copy()` for a shallow copy, and `copy.deepcopy()` for nested structures.
+
+```python
+a = [1, 2, 3]
+b = a          # b and a point to SAME list
+b[0] = 99     # a is also [99, 2, 3]
+
+c = a[:]       # c is an independent shallow copy
+```
+
+## Key Takeaways
+
+1. **Arrays provide $O(1)$ random access** due to contiguous memory layout and index-based addressing.
+2. **Insertions and deletions cost $O(n)$** because elements must be shifted. Append is amortized $O(1)$.
+3. **Python lists are dynamic arrays** of pointers with automatic resizing.
+4. **Kadane's algorithm** solves maximum subarray in $O(n)$ -- a classic example of converting brute force $O(n^2)$ to linear time.
+5. **The three-reversal trick** for rotation and the **Dutch National Flag** for partitioning are foundational techniques that appear across many problems.
+6. **Watch for off-by-one errors**, shallow copy issues, and modifying arrays during iteration.
+
+**Next:** [Strings](./strings) -- string immutability, pattern matching, and common string algorithms.

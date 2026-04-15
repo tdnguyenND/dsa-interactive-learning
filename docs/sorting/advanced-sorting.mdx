@@ -1,0 +1,321 @@
+---
+sidebar_position: 4
+title: "Advanced Sorting"
+---
+
+import CodePlayground from '@site/src/components/CodePlayground';
+
+# Advanced Sorting
+
+Beyond comparison-based sorts, several algorithms exploit the structure of data to achieve better performance. This page covers **heap sort**, **counting sort**, **radix sort**, **bucket sort**, and provides a comprehensive comparison of all sorting algorithms.
+
+## Heap Sort
+
+Heap sort uses a **binary max-heap** to repeatedly extract the largest element. It guarantees $O(n \log n)$ in all cases and sorts in-place.
+
+### Algorithm
+
+1. **Build a max-heap** from the array --- $O(n)$
+2. **Extract max** repeatedly: swap root with the last unsorted element, reduce heap size, sift down --- $O(n \log n)$
+
+<CodePlayground
+  code={`def heap_sort(arr):
+    n = len(arr)
+
+    def sift_down(i, size):
+        """Push arr[i] down to restore heap property."""
+        largest = i
+        left = 2 * i + 1
+        right = 2 * i + 2
+        if left < size and arr[left] > arr[largest]:
+            largest = left
+        if right < size and arr[right] > arr[largest]:
+            largest = right
+        if largest != i:
+            arr[i], arr[largest] = arr[largest], arr[i]
+            sift_down(largest, size)
+
+    # Build max-heap (start from last non-leaf)
+    for i in range(n // 2 - 1, -1, -1):
+        sift_down(i, n)
+
+    # Extract elements one by one
+    for end in range(n - 1, 0, -1):
+        arr[0], arr[end] = arr[end], arr[0]
+        sift_down(0, end)
+
+data = [12, 11, 13, 5, 6, 7]
+print("Before:", data)
+heap_sort(data)
+print("After: ", data)`}
+  title="Heap Sort"
+/>
+
+### Heap sort properties
+
+| Property | Value |
+|----------|-------|
+| **Time (all cases)** | $O(n \log n)$ |
+| **Space** | $O(1)$ in-place |
+| **Stable** | No |
+| **Use case** | Guaranteed $O(n \log n)$ with no extra memory |
+
+Heap sort has poor cache locality compared to quick sort, so it is often slower in practice despite the same asymptotic complexity.
+
+## Counting Sort
+
+Counting sort works on **non-negative integers** within a known range $[0, k)$. It counts occurrences of each value and uses prefix sums to place elements. It runs in $O(n + k)$ time.
+
+<CodePlayground
+  code={`def counting_sort(arr):
+    """Sort non-negative integers using counting sort.
+    Time: O(n + k), Space: O(n + k) where k = max(arr) + 1"""
+    if not arr:
+        return arr
+    k = max(arr) + 1
+    count = [0] * k
+
+    # Count occurrences
+    for x in arr:
+        count[x] += 1
+
+    # Prefix sums for stable placement
+    for i in range(1, k):
+        count[i] += count[i - 1]
+
+    # Build output (traverse backwards for stability)
+    output = [0] * len(arr)
+    for x in reversed(arr):
+        count[x] -= 1
+        output[count[x]] = x
+    return output
+
+data = [4, 2, 2, 8, 3, 3, 1]
+print("Before:", data)
+print("After: ", counting_sort(data))`}
+  title="Counting Sort"
+/>
+
+### When to use counting sort
+
+- Values are integers in a small range (e.g., ages 0--150, characters 0--127)
+- $k = O(n)$ so total time is $O(n)$
+- If $k \gg n$, the space overhead makes counting sort impractical
+
+## Radix Sort
+
+Radix sort sorts integers **digit by digit**, from least significant to most significant, using a **stable** sub-sort (typically counting sort) at each digit.
+
+<CodePlayground
+  code={`def counting_sort_by_digit(arr, exp):
+    """Stable sort by the digit at position exp."""
+    n = len(arr)
+    output = [0] * n
+    count = [0] * 10
+
+    for x in arr:
+        digit = (x // exp) % 10
+        count[digit] += 1
+
+    for i in range(1, 10):
+        count[i] += count[i - 1]
+
+    for x in reversed(arr):
+        digit = (x // exp) % 10
+        count[digit] -= 1
+        output[count[digit]] = x
+
+    for i in range(n):
+        arr[i] = output[i]
+
+def radix_sort(arr):
+    """LSD radix sort for non-negative integers.
+    Time: O(d * (n + b)) where d = digits, b = base (10)"""
+    if not arr:
+        return
+    max_val = max(arr)
+    exp = 1
+    while max_val // exp > 0:
+        counting_sort_by_digit(arr, exp)
+        exp *= 10
+
+data = [170, 45, 75, 90, 802, 24, 2, 66]
+print("Before:", data)
+radix_sort(data)
+print("After: ", data)`}
+  title="Radix Sort (LSD)"
+/>
+
+### Radix sort complexity
+
+With $n$ numbers, $d$ digits, and base $b$:
+
+- **Time**: $O(d \cdot (n + b))$
+- **Space**: $O(n + b)$
+- For 32-bit integers with base 256: $d = 4$, $b = 256$, so time is $O(4(n + 256)) = O(n)$
+
+## Bucket Sort
+
+Bucket sort distributes elements into **buckets**, sorts each bucket, then concatenates. It works well when input is **uniformly distributed** over a range.
+
+<CodePlayground
+  code={`def bucket_sort(arr):
+    """Bucket sort for floats in [0, 1).
+    Average O(n) when input is uniformly distributed."""
+    if not arr:
+        return arr
+    n = len(arr)
+    buckets = [[] for _ in range(n)]
+
+    # Distribute into buckets
+    for x in arr:
+        idx = int(n * x)
+        if idx == n:  # handle edge case x == 1.0
+            idx = n - 1
+        buckets[idx].append(x)
+
+    # Sort each bucket (insertion sort for small buckets)
+    for bucket in buckets:
+        bucket.sort()
+
+    # Concatenate
+    result = []
+    for bucket in buckets:
+        result.extend(bucket)
+    return result
+
+import random
+random.seed(42)
+data = [round(random.random(), 3) for _ in range(12)]
+print("Before:", data)
+print("After: ", bucket_sort(data))`}
+  title="Bucket Sort"
+/>
+
+### Bucket sort complexity
+
+| Case | Time | Condition |
+|------|------|-----------|
+| **Best / Average** | $O(n)$ | Uniform distribution, $n$ buckets |
+| **Worst** | $O(n^2)$ | All elements in one bucket |
+
+## Python's Timsort
+
+Python's built-in `sorted()` and `list.sort()` use **Timsort**, a hybrid algorithm combining merge sort and insertion sort. It was designed by Tim Peters for real-world data.
+
+### How Timsort works
+
+1. **Identify runs**: Find naturally ascending or descending subsequences in the data
+2. **Extend short runs**: Use binary insertion sort to extend runs to a minimum length (typically 32--64)
+3. **Merge runs**: Merge runs using a strategy that maintains balance (similar to merge sort)
+
+### Why Timsort is practical
+
+| Property | Value |
+|----------|-------|
+| **Best case** | $O(n)$ --- already sorted data |
+| **Average / Worst** | $O(n \log n)$ |
+| **Space** | $O(n)$ |
+| **Stable** | Yes |
+| **Adaptive** | Yes --- exploits existing order in the data |
+
+<CodePlayground
+  code={`# Timsort is what Python uses internally
+data = [5, 1, 4, 2, 8, 3, 7, 6]
+print("sorted():", sorted(data))
+
+# Stability demonstration
+students = [
+    ("Alice", 85), ("Bob", 92), ("Charlie", 85),
+    ("Diana", 92), ("Eve", 78)
+]
+# Sort by grade — students with same grade keep original order
+by_grade = sorted(students, key=lambda s: s[1])
+print("By grade:", by_grade)
+
+# Timsort is fast on nearly-sorted data
+import time
+nearly_sorted = list(range(10000))
+nearly_sorted[50], nearly_sorted[51] = nearly_sorted[51], nearly_sorted[50]
+start = time.time()
+nearly_sorted.sort()
+elapsed = time.time() - start
+print(f"Nearly sorted 10k elements: {elapsed:.6f}s")`}
+  title="Python Timsort in Action"
+/>
+
+## Comprehensive Sorting Algorithm Comparison
+
+| Algorithm | Best | Average | Worst | Space | Stable | In-place | Notes |
+|-----------|------|---------|-------|-------|--------|----------|-------|
+| **Bubble sort** | $O(n)$ | $O(n^2)$ | $O(n^2)$ | $O(1)$ | Yes | Yes | Educational only |
+| **Selection sort** | $O(n^2)$ | $O(n^2)$ | $O(n^2)$ | $O(1)$ | No | Yes | Minimizes swaps |
+| **Insertion sort** | $O(n)$ | $O(n^2)$ | $O(n^2)$ | $O(1)$ | Yes | Yes | Great for small/nearly-sorted |
+| **Merge sort** | $O(n \log n)$ | $O(n \log n)$ | $O(n \log n)$ | $O(n)$ | Yes | No | Guaranteed performance |
+| **Quick sort** | $O(n \log n)$ | $O(n \log n)$ | $O(n^2)$ | $O(\log n)$ | No | Yes | Fastest in practice (avg) |
+| **Heap sort** | $O(n \log n)$ | $O(n \log n)$ | $O(n \log n)$ | $O(1)$ | No | Yes | Guaranteed, no extra space |
+| **Counting sort** | $O(n + k)$ | $O(n + k)$ | $O(n + k)$ | $O(n + k)$ | Yes | No | Integer keys in range $[0, k)$ |
+| **Radix sort** | $O(dn)$ | $O(dn)$ | $O(dn)$ | $O(n + b)$ | Yes | No | $d$ digits, base $b$ |
+| **Bucket sort** | $O(n)$ | $O(n)$ | $O(n^2)$ | $O(n + k)$ | Yes | No | Uniform distribution |
+| **Timsort** | $O(n)$ | $O(n \log n)$ | $O(n \log n)$ | $O(n)$ | Yes | No | Python/Java default |
+
+## Choosing the right sorting algorithm
+
+<CodePlayground
+  code={`# Decision guide for choosing a sorting algorithm
+
+def recommend_sort(n, data_type, nearly_sorted, duplicates, memory_limit):
+    """Suggest the best sorting algorithm based on constraints."""
+    reasons = []
+
+    if data_type == "integers" and n > 1000:
+        reasons.append("Radix sort: O(dn) for integers, very fast")
+    if nearly_sorted:
+        reasons.append("Timsort/Insertion sort: O(n) on nearly sorted")
+    if memory_limit:
+        reasons.append("Heap sort: O(n log n) guaranteed, O(1) space")
+        reasons.append("Quick sort: O(n log n) avg, O(log n) space")
+    if duplicates:
+        reasons.append("3-way quick sort: optimal for many duplicates")
+    if not reasons:
+        reasons.append("Timsort (Python default): O(n log n), stable")
+        reasons.append("Quick sort: fastest average case in practice")
+
+    return reasons
+
+# Example scenarios
+print("=== Large integer array ===")
+for r in recommend_sort(100000, "integers", False, False, False):
+    print(f"  - {r}")
+
+print("\\n=== Nearly sorted data ===")
+for r in recommend_sort(10000, "general", True, False, False):
+    print(f"  - {r}")
+
+print("\\n=== Memory constrained ===")
+for r in recommend_sort(50000, "general", False, False, True):
+    print(f"  - {r}")
+
+print("\\n=== Many duplicates ===")
+for r in recommend_sort(50000, "general", False, True, False):
+    print(f"  - {r}")`}
+  title="Choosing a Sorting Algorithm"
+/>
+
+## Lower bound for comparison sorts
+
+Any comparison-based sorting algorithm must make at least $\Omega(n \log n)$ comparisons in the worst case. This is because there are $n!$ possible orderings, and each comparison eliminates at most half the remaining possibilities:
+
+$$\log_2(n!) = \Theta(n \log n)$$
+
+Non-comparison sorts (counting, radix, bucket) bypass this bound by exploiting the structure of the keys.
+
+## Key takeaways
+
+1. **Heap sort** provides guaranteed $O(n \log n)$ with $O(1)$ extra space, but has poor cache performance.
+2. **Counting sort** runs in $O(n + k)$ and is ideal when keys are integers in a small range.
+3. **Radix sort** achieves $O(dn)$ by sorting digit-by-digit with a stable sub-sort --- effectively linear for fixed-width integers.
+4. **Bucket sort** achieves $O(n)$ average time when input is uniformly distributed.
+5. **Timsort** (Python's default) is adaptive, stable, and excels on real-world data with natural runs.
+6. **No comparison sort can beat $O(n \log n)$** in the worst case --- non-comparison sorts achieve $O(n)$ by exploiting key structure.
+7. In practice, **use Python's built-in `sort()`** unless you have a specific reason not to (e.g., integer data where radix sort is faster, or memory constraints requiring heap sort).

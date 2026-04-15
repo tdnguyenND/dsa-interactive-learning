@@ -7,17 +7,27 @@ import CodePlayground from '@site/src/components/CodePlayground';
 
 # Stacks
 
-A stack is a linear data structure that follows the Last-In-First-Out (LIFO) principle. This page covers push, pop, and peek operations, along with common use cases like expression evaluation and backtracking.
+A **stack** is a linear data structure that follows the **Last-In, First-Out (LIFO)** principle. The last element added is the first one removed. Think of a stack of plates: you always add and remove from the top.
 
-## Overview
+## The Stack ADT
 
-Stacks allow insertion and removal only at the top. Think of a stack of plates: you add to the top and remove from the top. Stacks are used extensively in recursion, undo mechanisms, parsing expressions, and depth-first search.
+A stack supports four core operations:
 
-## Implementation
+| Operation | Description | Time |
+|-----------|-------------|------|
+| `push(item)` | Add an item to the top | $O(1)$ |
+| `pop()` | Remove and return the top item | $O(1)$ |
+| `peek()` / `top()` | Return the top item without removing it | $O(1)$ |
+| `is_empty()` | Check whether the stack is empty | $O(1)$ |
+
+All operations run in $O(1)$ time, which makes stacks extremely efficient. Searching for an arbitrary element requires $O(n)$ since you would need to pop elements one by one.
+
+## Implementation Using a Python List
+
+Python lists support `append()` and `pop()` at the end in amortized $O(1)$, making them a natural backing store for a stack.
 
 <CodePlayground
-  code={`# Stack Implementation using a List
-class Stack:
+  code={`class Stack:
     def __init__(self):
         self.items = []
 
@@ -26,12 +36,12 @@ class Stack:
 
     def pop(self):
         if self.is_empty():
-            raise IndexError("Stack is empty")
+            raise IndexError("pop from empty stack")
         return self.items.pop()
 
     def peek(self):
         if self.is_empty():
-            raise IndexError("Stack is empty")
+            raise IndexError("peek from empty stack")
         return self.items[-1]
 
     def is_empty(self):
@@ -40,27 +50,233 @@ class Stack:
     def size(self):
         return len(self.items)
 
-# Usage
-stack = Stack()
-for val in [10, 20, 30]:
-    stack.push(val)
-    print(f"Pushed {val}, top is now {stack.peek()}")
+    def __repr__(self):
+        return f"Stack({self.items})"
 
-print(f"Popped: {stack.pop()}")
-print(f"Top after pop: {stack.peek()}")
-print(f"Stack size: {stack.size()}")`}
-  title="Stacks Example"
+# Demo
+stack = Stack()
+for val in [10, 20, 30, 40]:
+    stack.push(val)
+    print(f"Pushed {val} -> {stack}")
+
+print(f"\\nPeek: {stack.peek()}")
+print(f"Pop:  {stack.pop()}")
+print(f"Pop:  {stack.pop()}")
+print(f"After pops: {stack}")`}
+  title="Stack Implementation (List-based)"
 />
 
-## Complexity
+## Implementation Using a Linked List
 
-| Operation | Time | Space |
-|-----------|------|-------|
-| Push      | O(1) | O(1)  |
-| Pop       | O(1) | O(1)  |
-| Peek      | O(1) | O(1)  |
-| Search    | O(n) | O(1)  |
+A linked-list-based stack avoids the occasional resizing cost of dynamic arrays. We push and pop at the **head** of the list for $O(1)$ worst-case time.
+
+<CodePlayground
+  code={`class Node:
+    def __init__(self, val, nxt=None):
+        self.val = val
+        self.nxt = nxt
+
+class LinkedStack:
+    def __init__(self):
+        self.head = None
+        self._size = 0
+
+    def push(self, item):
+        self.head = Node(item, self.head)
+        self._size += 1
+
+    def pop(self):
+        if self.is_empty():
+            raise IndexError("pop from empty stack")
+        val = self.head.val
+        self.head = self.head.nxt
+        self._size -= 1
+        return val
+
+    def peek(self):
+        if self.is_empty():
+            raise IndexError("peek from empty stack")
+        return self.head.val
+
+    def is_empty(self):
+        return self.head is None
+
+    def size(self):
+        return self._size
+
+# Demo
+s = LinkedStack()
+for v in [5, 15, 25]:
+    s.push(v)
+    print(f"Pushed {v}, top = {s.peek()}, size = {s.size()}")
+
+print(f"Pop: {s.pop()}")
+print(f"Pop: {s.pop()}")
+print(f"Top now: {s.peek()}")`}
+  title="Stack Implementation (Linked List)"
+/>
+
+## Application: Balanced Parentheses
+
+One of the most classic stack problems. For every opening bracket, push it. For every closing bracket, pop and check that it matches.
+
+**Algorithm:**
+1. For each character in the string:
+   - If it is an opening bracket (`(`, `[`, `{`), push it.
+   - If it is a closing bracket, pop the stack and verify the match.
+2. At the end, the stack must be empty.
+
+Time: $O(n)$ where $n$ is the string length. Space: $O(n)$ worst case.
+
+<CodePlayground
+  code={`def is_valid(s: str) -> bool:
+    stack = []
+    matching = {')': '(', ']': '[', '}': '{'}
+
+    for ch in s:
+        if ch in '([{':
+            stack.append(ch)
+        elif ch in ')]}':
+            if not stack or stack[-1] != matching[ch]:
+                return False
+            stack.pop()
+
+    return len(stack) == 0
+
+# Test cases
+tests = [
+    ("([]){}", True),
+    ("([)]",   False),
+    ("(((",    False),
+    ("",       True),
+    ("{[()]}",  True),
+]
+for expr, expected in tests:
+    result = is_valid(expr)
+    status = "PASS" if result == expected else "FAIL"
+    print(f"{status}: is_valid('{expr}') = {result}")`}
+  title="Balanced Parentheses Checker"
+/>
+
+## Application: Evaluate Postfix Expression
+
+In **postfix notation** (Reverse Polish Notation), operators come after their operands: `3 4 + 2 *` means $(3 + 4) \times 2 = 14$.
+
+**Algorithm:** Scan left to right. Push numbers onto the stack. When you encounter an operator, pop two operands, apply the operator, and push the result back.
+
+<CodePlayground
+  code={`def eval_postfix(tokens: list) -> float:
+    stack = []
+    for token in tokens:
+        if token in ('+', '-', '*', '/'):
+            b = stack.pop()  # second operand (popped first)
+            a = stack.pop()  # first operand
+            if   token == '+': stack.append(a + b)
+            elif token == '-': stack.append(a - b)
+            elif token == '*': stack.append(a * b)
+            elif token == '/': stack.append(int(a / b))  # integer division
+        else:
+            stack.append(int(token))
+    return stack[0]
+
+# Example: (3 + 4) * 2 = 14
+expr1 = ['3', '4', '+', '2', '*']
+print(f"{' '.join(expr1)} = {eval_postfix(expr1)}")
+
+# Example: 5 + ((1 + 2) * 4) - 3 = 14
+expr2 = ['5', '1', '2', '+', '4', '*', '+', '3', '-']
+print(f"{' '.join(expr2)} = {eval_postfix(expr2)}")
+
+# Example: 2 * 3 + 4 = 10
+expr3 = ['2', '3', '*', '4', '+']
+print(f"{' '.join(expr3)} = {eval_postfix(expr3)}")`}
+  title="Postfix Expression Evaluator"
+/>
+
+## The Function Call Stack
+
+Every programming language uses a stack internally to manage function calls. When a function is called, a **stack frame** (local variables, return address) is pushed. When the function returns, the frame is popped. This is why we get a "stack overflow" from infinite recursion --- the call stack runs out of space.
+
+<CodePlayground
+  code={`def factorial(n, depth=0):
+    indent = "  " * depth
+    print(f"{indent}factorial({n}) called")
+    if n <= 1:
+        print(f"{indent}factorial({n}) returns 1")
+        return 1
+    result = n * factorial(n - 1, depth + 1)
+    print(f"{indent}factorial({n}) returns {result}")
+    return result
+
+print("Result:", factorial(5))`}
+  title="Visualising the Call Stack"
+/>
+
+## Min Stack
+
+Design a stack that supports `push`, `pop`, `peek`, and retrieving the minimum element --- all in $O(1)$ time.
+
+**Key idea:** Maintain a second stack that tracks the current minimum. Every time you push, also push the new minimum (the smaller of the incoming value and the current minimum) onto the min stack.
+
+<CodePlayground
+  code={`class MinStack:
+    def __init__(self):
+        self.stack = []
+        self.min_stack = []  # parallel stack of minimums
+
+    def push(self, val: int):
+        self.stack.append(val)
+        current_min = min(val, self.min_stack[-1] if self.min_stack else val)
+        self.min_stack.append(current_min)
+
+    def pop(self):
+        self.min_stack.pop()
+        return self.stack.pop()
+
+    def peek(self):
+        return self.stack[-1]
+
+    def get_min(self):
+        return self.min_stack[-1]
+
+# Demo
+ms = MinStack()
+operations = [
+    ("push", 5), ("push", 3), ("push", 7), ("push", 1), ("push", 4)
+]
+for op, val in operations:
+    ms.push(val)
+    print(f"push({val}) -> min = {ms.get_min()}")
+
+print()
+for _ in range(3):
+    removed = ms.pop()
+    print(f"pop() removed {removed} -> min = {ms.get_min()}")`}
+  title="Min Stack - O(1) Get Minimum"
+/>
+
+## Complexity Summary
+
+| Operation | List-based | Linked-list-based |
+|-----------|-----------|-------------------|
+| Push | $O(1)$ amortized | $O(1)$ worst-case |
+| Pop | $O(1)$ | $O(1)$ |
+| Peek | $O(1)$ | $O(1)$ |
+| Space | $O(n)$ | $O(n)$ |
+
+The list-based approach is generally preferred in Python due to better cache locality and lower constant factors.
 
 ---
 
-*Full content coming soon.*
+## Key takeaways
+
+1. Stacks follow the **LIFO** principle --- last in, first out
+2. All core operations (`push`, `pop`, `peek`) run in $O(1)$
+3. Python lists make excellent stacks via `append()` and `pop()`
+4. Stacks naturally solve **bracket matching**, **expression evaluation**, and **undo/redo** problems
+5. The **Min Stack** pattern uses a parallel stack to track minimums in $O(1)$
+6. The function call stack itself is a stack --- understanding this deepens your grasp of recursion
+
+---
+
+**Next:** [Queues](/docs/stacks-and-queues/queues) --- the FIFO counterpart to stacks.

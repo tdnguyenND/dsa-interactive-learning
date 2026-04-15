@@ -1,0 +1,170 @@
+---
+sidebar_position: 2
+title: "Hash Map Patterns"
+---
+
+import CodePlayground from '@site/src/components/CodePlayground';
+
+# Hash Map Patterns
+
+Hash maps (dictionaries) are the workhorse of DSA problem-solving. Here are the most common patterns.
+
+## Pattern 1: Frequency counting
+
+Count occurrences and use the counts to make decisions.
+
+<CodePlayground
+  code={`from collections import Counter
+
+def is_anagram(s, t):
+    return Counter(s) == Counter(t)
+
+def first_unique_char(s):
+    freq = Counter(s)
+    for i, ch in enumerate(s):
+        if freq[ch] == 1:
+            return i
+    return -1
+
+def top_k_frequent(nums, k):
+    freq = Counter(nums)
+    return [x for x, _ in freq.most_common(k)]
+
+print(is_anagram("anagram", "nagaram"))          # True
+print(first_unique_char("leetcode"))              # 0
+print(top_k_frequent([1,1,1,2,2,3], 2))         # [1, 2]`}
+  title="Frequency Counting"
+/>
+
+## Pattern 2: Complement lookup (Two Sum)
+
+Store seen values and check for complements.
+
+<CodePlayground
+  code={`def two_sum(nums, target):
+    """O(n) using hash map for complement lookup"""
+    seen = {}
+    for i, num in enumerate(nums):
+        complement = target - num
+        if complement in seen:
+            return [seen[complement], i]
+        seen[num] = i
+    return []
+
+def four_sum_count(A, B, C, D):
+    """Count tuples (i,j,k,l) where A[i]+B[j]+C[k]+D[l]=0"""
+    ab_sums = Counter(a + b for a in A for b in B)
+    return sum(ab_sums.get(-(c + d), 0) for c in C for d in D)
+
+from collections import Counter
+print(two_sum([2, 7, 11, 15], 9))  # [0, 1]`}
+  title="Complement Lookup"
+/>
+
+## Pattern 3: Grouping
+
+Group items by a computed key.
+
+<CodePlayground
+  code={`from collections import defaultdict
+
+def group_anagrams(strs):
+    groups = defaultdict(list)
+    for s in strs:
+        key = tuple(sorted(s))
+        groups[key].append(s)
+    return list(groups.values())
+
+result = group_anagrams(["eat","tea","tan","ate","nat","bat"])
+for group in result:
+    print(group)`}
+  title="Grouping Pattern"
+/>
+
+## Pattern 4: Prefix sum + hash map
+
+Combine prefix sums with hash maps for subarray problems.
+
+<CodePlayground
+  code={`def subarray_sum(nums, k):
+    """Count subarrays summing to k — O(n)"""
+    count = 0
+    prefix = 0
+    seen = {0: 1}
+    for num in nums:
+        prefix += num
+        count += seen.get(prefix - k, 0)
+        seen[prefix] = seen.get(prefix, 0) + 1
+    return count
+
+def longest_subarray_sum_k(nums, k):
+    """Longest subarray with sum = k"""
+    prefix = 0
+    first_seen = {0: -1}
+    max_len = 0
+    for i, num in enumerate(nums):
+        prefix += num
+        if prefix - k in first_seen:
+            max_len = max(max_len, i - first_seen[prefix - k])
+        if prefix not in first_seen:
+            first_seen[prefix] = i
+    return max_len
+
+print(f"Count subarrays sum=2: {subarray_sum([1,1,1], 2)}")           # 2
+print(f"Longest subarray sum=3: {longest_subarray_sum_k([1,-1,5,-2,3], 3)}")  # 4`}
+  title="Prefix Sum + Hash Map"
+/>
+
+## Pattern 5: Sliding window + hash map
+
+Track character/element counts within a window.
+
+<CodePlayground
+  code={`def length_of_longest_substring(s):
+    """Longest substring without repeating characters"""
+    seen = {}
+    left = max_len = 0
+    for right, ch in enumerate(s):
+        if ch in seen and seen[ch] >= left:
+            left = seen[ch] + 1
+        seen[ch] = right
+        max_len = max(max_len, right - left + 1)
+    return max_len
+
+def character_replacement(s, k):
+    """Longest substring with at most k replacements to make all same char"""
+    count = {}
+    left = max_len = max_freq = 0
+    for right, ch in enumerate(s):
+        count[ch] = count.get(ch, 0) + 1
+        max_freq = max(max_freq, count[ch])
+        while (right - left + 1) - max_freq > k:
+            count[s[left]] -= 1
+            left += 1
+        max_len = max(max_len, right - left + 1)
+    return max_len
+
+print(length_of_longest_substring("abcabcbb"))    # 3
+print(character_replacement("AABABBA", 1))         # 4`}
+  title="Sliding Window + Hash Map"
+/>
+
+## When to use a hash map
+
+| Signal | Pattern |
+|--------|---------|
+| "Find pair that sums to X" | Complement lookup |
+| "Count occurrences" | Frequency counting |
+| "Group by property" | Grouping |
+| "Subarray sum equals K" | Prefix sum + hash map |
+| "Longest substring with condition" | Sliding window + hash map |
+
+---
+
+## Key takeaways
+
+1. Hash maps turn $O(n)$ lookups into $O(1)$ — the core speedup
+2. **Frequency counting** is the simplest and most common pattern
+3. **Complement lookup** (two sum) generalizes to many "find pair" problems
+4. **Prefix sum + hash map** solves subarray sum problems in $O(n)$
+5. Always think: "Can I store something now and look it up later?"

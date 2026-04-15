@@ -1,0 +1,341 @@
+---
+sidebar_position: 2
+title: "Classic DP Problems"
+---
+
+import CodePlayground from '@site/src/components/CodePlayground';
+
+# Classic DP Problems
+
+This page covers four foundational dynamic programming problems that appear constantly in interviews and competitive programming. For each problem we define the **state**, **recurrence**, **base cases**, and provide both top-down and bottom-up solutions.
+
+## 0/1 Knapsack
+
+**Problem**: Given $n$ items, each with a weight $w_i$ and value $v_i$, and a knapsack of capacity $W$, maximize the total value without exceeding the weight limit. Each item can be taken **at most once**.
+
+### State definition
+
+$dp[i][c]$ = maximum value using the first $i$ items with capacity $c$.
+
+### Recurrence
+
+$$dp[i][c] = \max(dp[i-1][c],\ dp[i-1][c - w_i] + v_i) \quad \text{if } c \geq w_i$$
+
+If $c < w_i$, we cannot take item $i$: $dp[i][c] = dp[i-1][c]$.
+
+### Base case
+
+$dp[0][c] = 0$ for all $c$ (no items means no value).
+
+<CodePlayground
+  code={`def knapsack_2d(weights, values, capacity):
+    """0/1 Knapsack — 2D DP table.
+    Time: O(n * W), Space: O(n * W)"""
+    n = len(weights)
+    dp = [[0] * (capacity + 1) for _ in range(n + 1)]
+
+    for i in range(1, n + 1):
+        w, v = weights[i - 1], values[i - 1]
+        for c in range(capacity + 1):
+            dp[i][c] = dp[i - 1][c]  # skip item i
+            if c >= w:
+                dp[i][c] = max(dp[i][c], dp[i - 1][c - w] + v)
+
+    return dp[n][capacity]
+
+weights = [2, 3, 4, 5]
+values  = [3, 4, 5, 6]
+capacity = 8
+print(f"Max value: {knapsack_2d(weights, values, capacity)}")
+# Expected: 10 (items with weight 3,5 -> value 4+6)`}
+  title="0/1 Knapsack (2D Table)"
+/>
+
+### Space-optimized version
+
+Since row $i$ only depends on row $i-1$, we can use a single 1D array, iterating capacity in **reverse** to avoid using updated values from the current row.
+
+<CodePlayground
+  code={`def knapsack_1d(weights, values, capacity):
+    """0/1 Knapsack — space-optimized 1D DP.
+    Time: O(n * W), Space: O(W)"""
+    dp = [0] * (capacity + 1)
+
+    for i in range(len(weights)):
+        w, v = weights[i], values[i]
+        # Reverse order to avoid reusing item i
+        for c in range(capacity, w - 1, -1):
+            dp[c] = max(dp[c], dp[c - w] + v)
+
+    return dp[capacity]
+
+weights = [2, 3, 4, 5]
+values  = [3, 4, 5, 6]
+print(f"Max value: {knapsack_1d(weights, values, 8)}")
+print(f"Max value (cap=5): {knapsack_1d(weights, values, 5)}")`}
+  title="0/1 Knapsack (Space Optimized)"
+/>
+
+### Complexity
+
+| Aspect | Value |
+|--------|-------|
+| **Time** | $O(n \cdot W)$ |
+| **Space** | $O(W)$ optimized, $O(n \cdot W)$ full table |
+| **Note** | Pseudo-polynomial: polynomial in $n$ and $W$, but $W$ can be exponential in the input size |
+
+## Edit Distance (Levenshtein Distance)
+
+**Problem**: Given two strings $s$ and $t$, find the minimum number of operations (insert, delete, replace) to convert $s$ into $t$.
+
+### State definition
+
+$dp[i][j]$ = edit distance between $s[0..i-1]$ and $t[0..j-1]$.
+
+### Recurrence
+
+$$dp[i][j] = \begin{cases} dp[i-1][j-1] & \text{if } s[i-1] = t[j-1] \\ 1 + \min(dp[i-1][j],\ dp[i][j-1],\ dp[i-1][j-1]) & \text{otherwise} \end{cases}$$
+
+The three operations correspond to:
+- $dp[i-1][j] + 1$: delete from $s$
+- $dp[i][j-1] + 1$: insert into $s$
+- $dp[i-1][j-1] + 1$: replace in $s$
+
+### Base cases
+
+$dp[i][0] = i$ (delete all of $s$), $dp[0][j] = j$ (insert all of $t$).
+
+<CodePlayground
+  code={`def edit_distance(s, t):
+    """Minimum edit distance (Levenshtein).
+    Time: O(m * n), Space: O(m * n)"""
+    m, n = len(s), len(t)
+    dp = [[0] * (n + 1) for _ in range(m + 1)]
+
+    # Base cases
+    for i in range(m + 1):
+        dp[i][0] = i
+    for j in range(n + 1):
+        dp[0][j] = j
+
+    for i in range(1, m + 1):
+        for j in range(1, n + 1):
+            if s[i - 1] == t[j - 1]:
+                dp[i][j] = dp[i - 1][j - 1]
+            else:
+                dp[i][j] = 1 + min(
+                    dp[i - 1][j],      # delete
+                    dp[i][j - 1],      # insert
+                    dp[i - 1][j - 1]   # replace
+                )
+    return dp[m][n]
+
+print(edit_distance("kitten", "sitting"))   # 3
+print(edit_distance("saturday", "sunday"))  # 3
+print(edit_distance("", "abc"))             # 3
+print(edit_distance("abc", "abc"))          # 0`}
+  title="Edit Distance"
+/>
+
+<CodePlayground
+  code={`def edit_distance_optimized(s, t):
+    """Edit distance with O(min(m,n)) space."""
+    if len(s) < len(t):
+        s, t = t, s  # ensure s is longer
+    m, n = len(s), len(t)
+    prev = list(range(n + 1))
+    curr = [0] * (n + 1)
+
+    for i in range(1, m + 1):
+        curr[0] = i
+        for j in range(1, n + 1):
+            if s[i - 1] == t[j - 1]:
+                curr[j] = prev[j - 1]
+            else:
+                curr[j] = 1 + min(prev[j], curr[j - 1], prev[j - 1])
+        prev, curr = curr, prev
+
+    return prev[n]
+
+print(edit_distance_optimized("intention", "execution"))  # 5`}
+  title="Edit Distance (Space Optimized)"
+/>
+
+### Complexity
+
+| Aspect | Value |
+|--------|-------|
+| **Time** | $O(m \cdot n)$ |
+| **Space** | $O(\min(m, n))$ optimized |
+
+## Longest Common Subsequence (LCS)
+
+**Problem**: Given two strings $s$ and $t$, find the length of the longest subsequence common to both.
+
+### State definition
+
+$dp[i][j]$ = length of LCS of $s[0..i-1]$ and $t[0..j-1]$.
+
+### Recurrence
+
+$$dp[i][j] = \begin{cases} dp[i-1][j-1] + 1 & \text{if } s[i-1] = t[j-1] \\ \max(dp[i-1][j],\ dp[i][j-1]) & \text{otherwise} \end{cases}$$
+
+### Base case
+
+$dp[i][0] = dp[0][j] = 0$.
+
+<CodePlayground
+  code={`def lcs_length(s, t):
+    """Longest Common Subsequence length.
+    Time: O(m * n), Space: O(m * n)"""
+    m, n = len(s), len(t)
+    dp = [[0] * (n + 1) for _ in range(m + 1)]
+
+    for i in range(1, m + 1):
+        for j in range(1, n + 1):
+            if s[i - 1] == t[j - 1]:
+                dp[i][j] = dp[i - 1][j - 1] + 1
+            else:
+                dp[i][j] = max(dp[i - 1][j], dp[i][j - 1])
+
+    return dp[m][n]
+
+def lcs_string(s, t):
+    """Reconstruct the actual LCS string."""
+    m, n = len(s), len(t)
+    dp = [[0] * (n + 1) for _ in range(m + 1)]
+    for i in range(1, m + 1):
+        for j in range(1, n + 1):
+            if s[i - 1] == t[j - 1]:
+                dp[i][j] = dp[i - 1][j - 1] + 1
+            else:
+                dp[i][j] = max(dp[i - 1][j], dp[i][j - 1])
+
+    # Backtrack to find the subsequence
+    result = []
+    i, j = m, n
+    while i > 0 and j > 0:
+        if s[i - 1] == t[j - 1]:
+            result.append(s[i - 1])
+            i -= 1
+            j -= 1
+        elif dp[i - 1][j] > dp[i][j - 1]:
+            i -= 1
+        else:
+            j -= 1
+    return "".join(reversed(result))
+
+print("LCS length:", lcs_length("abcde", "ace"))     # 3
+print("LCS string:", lcs_string("abcde", "ace"))      # "ace"
+print("LCS length:", lcs_length("AGGTAB", "GXTXAYB")) # 4
+print("LCS string:", lcs_string("AGGTAB", "GXTXAYB")) # "GTAB"`}
+  title="Longest Common Subsequence"
+/>
+
+### Complexity
+
+| Aspect | Value |
+|--------|-------|
+| **Time** | $O(m \cdot n)$ |
+| **Space** | $O(m \cdot n)$, reducible to $O(\min(m,n))$ for length only |
+
+## Unique Paths
+
+**Problem**: A robot starts at the top-left corner of an $m \times n$ grid. It can only move **right** or **down**. Count the number of unique paths to the bottom-right corner.
+
+### State definition
+
+$dp[i][j]$ = number of unique paths from $(0, 0)$ to $(i, j)$.
+
+### Recurrence
+
+$$dp[i][j] = dp[i-1][j] + dp[i][j-1]$$
+
+The robot can arrive from the cell above or the cell to the left.
+
+### Base case
+
+$dp[0][j] = 1$ (only rightward) and $dp[i][0] = 1$ (only downward).
+
+<CodePlayground
+  code={`def unique_paths(m, n):
+    """Count unique paths in m x n grid.
+    Time: O(m * n), Space: O(n)"""
+    dp = [1] * n  # first row is all 1s
+
+    for i in range(1, m):
+        for j in range(1, n):
+            dp[j] += dp[j - 1]  # dp[j] already has "from above"
+
+    return dp[n - 1]
+
+print(f"3x7 grid: {unique_paths(3, 7)} paths")   # 28
+print(f"3x3 grid: {unique_paths(3, 3)} paths")   # 6
+print(f"1x1 grid: {unique_paths(1, 1)} paths")   # 1`}
+  title="Unique Paths"
+/>
+
+### Variant: Unique Paths with Obstacles
+
+<CodePlayground
+  code={`def unique_paths_obstacles(grid):
+    """Count unique paths with obstacles (1 = blocked).
+    Time: O(m * n), Space: O(n)"""
+    m, n = len(grid), len(grid[0])
+    dp = [0] * n
+
+    # First row
+    for j in range(n):
+        if grid[0][j] == 1:
+            break
+        dp[j] = 1
+
+    for i in range(1, m):
+        for j in range(n):
+            if grid[i][j] == 1:
+                dp[j] = 0
+            elif j > 0:
+                dp[j] += dp[j - 1]
+
+    return dp[n - 1]
+
+grid1 = [
+    [0, 0, 0],
+    [0, 1, 0],
+    [0, 0, 0]
+]
+print(f"With obstacle: {unique_paths_obstacles(grid1)} paths")  # 2
+
+grid2 = [
+    [0, 0, 0, 0],
+    [0, 0, 0, 0],
+    [0, 0, 0, 0]
+]
+print(f"No obstacles:  {unique_paths_obstacles(grid2)} paths")  # 10`}
+  title="Unique Paths with Obstacles"
+/>
+
+### Complexity
+
+| Aspect | Value |
+|--------|-------|
+| **Time** | $O(m \cdot n)$ |
+| **Space** | $O(n)$ optimized |
+
+## Summary comparison
+
+| Problem | State | Recurrence | Time | Space |
+|---------|-------|-----------|------|-------|
+| **0/1 Knapsack** | $dp[i][c]$: max value with $i$ items, capacity $c$ | $\max(\text{skip}, \text{take})$ | $O(nW)$ | $O(W)$ |
+| **Edit Distance** | $dp[i][j]$: cost to transform $s[0..i]$ to $t[0..j]$ | match or $1 + \min(\text{del, ins, rep})$ | $O(mn)$ | $O(\min(m,n))$ |
+| **LCS** | $dp[i][j]$: LCS length of $s[0..i]$ and $t[0..j]$ | match $+1$ or $\max(\text{skip either})$ | $O(mn)$ | $O(\min(m,n))$ |
+| **Unique Paths** | $dp[i][j]$: paths to cell $(i,j)$ | $dp[i-1][j] + dp[i][j-1]$ | $O(mn)$ | $O(n)$ |
+
+## Key takeaways
+
+1. **Define the state clearly** before writing any code --- what does $dp[i][j]$ represent?
+2. **Write the recurrence** by considering all choices at each step (take/skip, match/delete/insert/replace, come from above/left).
+3. **Identify base cases** --- they anchor the recursion and fill the boundary of the DP table.
+4. **Optimize space** when each row only depends on the previous row: use a 1D array instead of a 2D table.
+5. **Backtracking** through the DP table lets you reconstruct the actual solution (e.g., the LCS string, the items chosen in knapsack).
+6. All four problems follow the same recipe: define state, write recurrence, handle base cases, optimize.

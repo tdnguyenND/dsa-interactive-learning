@@ -7,24 +7,65 @@ import CodePlayground from '@site/src/components/CodePlayground';
 
 # Merge Sort
 
-Merge sort is a divide-and-conquer sorting algorithm that divides the array into halves, recursively sorts each half, and then merges the sorted halves back together. This page covers the implementation and analysis of merge sort.
+Merge sort is a **divide-and-conquer** algorithm that splits the array in half, recursively sorts each half, then merges the two sorted halves. It guarantees $O(n \log n)$ time in all cases.
 
-## Overview
+## How it works
 
-Merge sort guarantees O(n log n) time complexity in all cases (best, average, and worst), making it more predictable than algorithms like quicksort. It is a stable sort, meaning equal elements retain their relative order. The trade-off is that it requires O(n) additional space for the merge step.
+1. **Divide**: Split the array into two halves
+2. **Conquer**: Recursively sort each half
+3. **Merge**: Combine two sorted halves into one sorted array
 
-## Implementation
+The key insight: **merging two sorted arrays is $O(n)$** — use two pointers and always take the smaller element.
+
+```
+          [38, 27, 43, 3, 9, 82, 10]
+              /                 \
+       [38, 27, 43]         [3, 9, 82, 10]
+        /       \              /        \
+    [38, 27]   [43]       [3, 9]    [82, 10]
+     /   \                 /   \      /    \
+   [38] [27]             [3]  [9]  [82]  [10]
+     \   /                 \   /      \    /
+    [27, 38]              [3, 9]    [10, 82]
+        \       /              \        /
+       [27, 38, 43]        [3, 9, 10, 82]
+              \                 /
+        [3, 9, 10, 27, 38, 43, 82]
+```
+
+## The merge function
 
 <CodePlayground
-  code={`# Merge Sort Implementation
-def merge_sort(arr):
+  code={`def merge(left, right):
+    """Merge two sorted arrays into one — O(n)"""
+    result = []
+    i = j = 0
+    while i < len(left) and j < len(right):
+        if left[i] <= right[j]:   # <= ensures stability
+            result.append(left[i])
+            i += 1
+        else:
+            result.append(right[j])
+            j += 1
+    result.extend(left[i:])
+    result.extend(right[j:])
+    return result
+
+print(merge([1, 3, 5, 7], [2, 4, 6, 8]))
+print(merge([1, 2, 3], [4, 5]))
+print(merge([], [1, 2, 3]))`}
+  title="Merge Function"
+/>
+
+## Full implementation
+
+<CodePlayground
+  code={`def merge_sort(arr):
     if len(arr) <= 1:
         return arr
-
     mid = len(arr) // 2
     left = merge_sort(arr[:mid])
     right = merge_sort(arr[mid:])
-
     return merge(left, right)
 
 def merge(left, right):
@@ -41,22 +82,113 @@ def merge(left, right):
     result.extend(right[j:])
     return result
 
-# Example usage
-arr = [38, 27, 43, 3, 9, 82, 10]
-print("Original: ", arr)
-sorted_arr = merge_sort(arr)
-print("Sorted:   ", sorted_arr)`}
-  title="Merge Sort Example"
+data = [38, 27, 43, 3, 9, 82, 10]
+print(f"Input:  {data}")
+print(f"Sorted: {merge_sort(data)}")
+
+# Verify stability
+pairs = [(3,'a'), (1,'b'), (3,'c'), (2,'d')]
+result = sorted(pairs, key=lambda x: x[0])
+print(f"Stable: {result}")  # (3,'a') before (3,'c')`}
+  title="Merge Sort"
+/>
+
+## In-place merge sort
+
+<CodePlayground
+  code={`def merge_sort_inplace(arr, left=0, right=None):
+    if right is None:
+        right = len(arr)
+    if right - left <= 1:
+        return
+    mid = (left + right) // 2
+    merge_sort_inplace(arr, left, mid)
+    merge_sort_inplace(arr, mid, right)
+
+    # Merge using temp array
+    temp = arr[left:right]
+    i, j, k = 0, mid - left, left
+    left_end, right_end = mid - left, right - left
+    while i < left_end and j < right_end:
+        if temp[i] <= temp[j]:
+            arr[k] = temp[i]; i += 1
+        else:
+            arr[k] = temp[j]; j += 1
+        k += 1
+    while i < left_end:
+        arr[k] = temp[i]; i += 1; k += 1
+    while j < right_end:
+        arr[k] = temp[j]; j += 1; k += 1
+
+data = [38, 27, 43, 3, 9, 82, 10]
+print(f"Before: {data}")
+merge_sort_inplace(data)
+print(f"After:  {data}")`}
+  title="In-Place Merge Sort"
+/>
+
+## Application: counting inversions
+
+Count pairs $(i, j)$ where $i < j$ but $arr[i] > arr[j]$. The merge step naturally counts cross-inversions.
+
+<CodePlayground
+  code={`def count_inversions(arr):
+    if len(arr) <= 1:
+        return arr, 0
+    mid = len(arr) // 2
+    left, left_inv = count_inversions(arr[:mid])
+    right, right_inv = count_inversions(arr[mid:])
+
+    merged = []
+    inversions = left_inv + right_inv
+    i = j = 0
+    while i < len(left) and j < len(right):
+        if left[i] <= right[j]:
+            merged.append(left[i]); i += 1
+        else:
+            merged.append(right[j])
+            inversions += len(left) - i  # key insight
+            j += 1
+    merged.extend(left[i:])
+    merged.extend(right[j:])
+    return merged, inversions
+
+arr = [5, 3, 2, 4, 1]
+_, inv = count_inversions(arr)
+print(f"Array: {arr}")
+print(f"Inversions: {inv}")  # 8`}
+  title="Counting Inversions"
 />
 
 ## Complexity
 
-| Case    | Time       | Space |
-|---------|------------|-------|
-| Best    | O(n log n) | O(n)  |
-| Average | O(n log n) | O(n)  |
-| Worst   | O(n log n) | O(n)  |
+| Case | Time | Space |
+|------|------|-------|
+| Best | $O(n \log n)$ | $O(n)$ |
+| Average | $O(n \log n)$ | $O(n)$ |
+| Worst | $O(n \log n)$ | $O(n)$ |
+
+**Recurrence**: $T(n) = 2T(n/2) + O(n) \Rightarrow O(n \log n)$ by Master Theorem.
+
+**Properties**: Stable, not in-place ($O(n)$ space), predictable performance, parallelizable.
+
+## When to use merge sort
+
+- Stability required
+- Worst-case guarantee matters
+- Sorting linked lists ($O(1)$ extra space — no random access needed)
+- External sorting (data doesn't fit in memory)
 
 ---
 
-*Full content coming soon.*
+## Key takeaways
+
+1. Divide and conquer: split, sort halves, merge
+2. Always $O(n \log n)$ — no worst-case degradation
+3. Requires $O(n)$ extra space (main disadvantage vs quick sort)
+4. **Stable** sort — preserves order of equal elements
+5. Merge step also solves counting inversions
+
+---
+
+**Next:** [Quick Sort](/docs/sorting/quick-sort)

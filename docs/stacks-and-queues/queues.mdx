@@ -1,0 +1,350 @@
+---
+sidebar_position: 2
+title: "Queues"
+---
+
+import CodePlayground from '@site/src/components/CodePlayground';
+
+# Queues
+
+A **queue** is a linear data structure that follows the **First-In, First-Out (FIFO)** principle. The first element added is the first one removed --- like a line of people waiting at a ticket counter.
+
+## The Queue ADT
+
+| Operation | Description | Time |
+|-----------|-------------|------|
+| `enqueue(item)` | Add an item to the back | $O(1)$ |
+| `dequeue()` | Remove and return the front item | $O(1)$ |
+| `front()` / `peek()` | Return the front item without removing | $O(1)$ |
+| `is_empty()` | Check whether the queue is empty | $O(1)$ |
+
+## Why Not Use a Plain List?
+
+Removing from the front of a Python list with `pop(0)` is $O(n)$ because every remaining element must shift left. This makes a naive list-based queue inefficient.
+
+<CodePlayground
+  code={`import time
+
+# Demonstrating the cost of pop(0)
+def time_dequeue(n):
+    """Show that list.pop(0) is O(n) per call."""
+    q = list(range(n))
+    start = time.time()
+    while q:
+        q.pop(0)
+    elapsed = time.time() - start
+    return elapsed
+
+for size in [1000, 5000, 10000]:
+    t = time_dequeue(size)
+    print(f"n={size:>6}: pop(0) total = {t:.4f}s")`}
+  title="List pop(0) is O(n) -- Avoid for Queues"
+/>
+
+## Efficient Queue with collections.deque
+
+Python's `collections.deque` (double-ended queue) provides $O(1)$ append and popleft operations. This is the idiomatic way to implement a queue in Python.
+
+<CodePlayground
+  code={`from collections import deque
+
+class Queue:
+    def __init__(self):
+        self.data = deque()
+
+    def enqueue(self, item):
+        self.data.append(item)
+
+    def dequeue(self):
+        if self.is_empty():
+            raise IndexError("dequeue from empty queue")
+        return self.data.popleft()
+
+    def front(self):
+        if self.is_empty():
+            raise IndexError("front from empty queue")
+        return self.data[0]
+
+    def is_empty(self):
+        return len(self.data) == 0
+
+    def size(self):
+        return len(self.data)
+
+    def __repr__(self):
+        return f"Queue({list(self.data)})"
+
+# Demo
+q = Queue()
+for val in ["Alice", "Bob", "Charlie", "Diana"]:
+    q.enqueue(val)
+    print(f"Enqueued {val} -> {q}")
+
+print(f"\\nFront: {q.front()}")
+print(f"Dequeue: {q.dequeue()}")
+print(f"Dequeue: {q.dequeue()}")
+print(f"After two dequeues: {q}")`}
+  title="Queue with collections.deque"
+/>
+
+## Circular Queue (Ring Buffer)
+
+A **circular queue** uses a fixed-size array and two pointers (`front` and `rear`) that wrap around. This avoids shifting elements and works well when the maximum size is known in advance --- common in embedded systems, OS buffers, and producer-consumer patterns.
+
+The key insight is using modular arithmetic: `index = (index + 1) % capacity`.
+
+<CodePlayground
+  code={`class CircularQueue:
+    def __init__(self, capacity: int):
+        self.data = [None] * capacity
+        self.capacity = capacity
+        self.front = 0
+        self.rear = -1
+        self._size = 0
+
+    def enqueue(self, item):
+        if self._size == self.capacity:
+            raise OverflowError("Queue is full")
+        self.rear = (self.rear + 1) % self.capacity
+        self.data[self.rear] = item
+        self._size += 1
+
+    def dequeue(self):
+        if self.is_empty():
+            raise IndexError("dequeue from empty queue")
+        val = self.data[self.front]
+        self.data[self.front] = None  # optional: help GC
+        self.front = (self.front + 1) % self.capacity
+        self._size -= 1
+        return val
+
+    def peek(self):
+        if self.is_empty():
+            raise IndexError("peek from empty queue")
+        return self.data[self.front]
+
+    def is_empty(self):
+        return self._size == 0
+
+    def is_full(self):
+        return self._size == self.capacity
+
+    def __repr__(self):
+        return f"CircularQueue({self.data}, front={self.front}, rear={self.rear})"
+
+# Demo
+cq = CircularQueue(4)
+for v in [10, 20, 30, 40]:
+    cq.enqueue(v)
+print(f"Full queue: {cq}")
+
+cq.dequeue()  # remove 10
+cq.dequeue()  # remove 20
+print(f"After 2 dequeues: {cq}")
+
+cq.enqueue(50)  # wraps around
+cq.enqueue(60)
+print(f"After wrapping: {cq}")
+
+# Drain remaining
+while not cq.is_empty():
+    print(f"  Dequeue: {cq.dequeue()}")`}
+  title="Circular Queue (Ring Buffer)"
+/>
+
+## Double-Ended Queue (Deque)
+
+A **deque** allows insertion and removal at **both** ends in $O(1)$. Python's `collections.deque` is exactly this.
+
+| Operation | Description | Time |
+|-----------|-------------|------|
+| `append(x)` | Add to the right | $O(1)$ |
+| `appendleft(x)` | Add to the left | $O(1)$ |
+| `pop()` | Remove from the right | $O(1)$ |
+| `popleft()` | Remove from the left | $O(1)$ |
+
+A deque can act as both a stack (use `append`/`pop`) and a queue (use `append`/`popleft`).
+
+<CodePlayground
+  code={`from collections import deque
+
+d = deque()
+
+# Use as a queue (FIFO)
+d.append("A")
+d.append("B")
+d.append("C")
+print(f"Queue mode: {list(d)}")
+print(f"Dequeue: {d.popleft()}")  # A
+
+# Use as a stack (LIFO)
+d.append("D")
+print(f"Stack pop: {d.pop()}")    # D
+
+# Add to both ends
+d.appendleft("Z")
+print(f"After appendleft('Z'): {list(d)}")
+
+# Bounded deque --- automatically drops oldest
+bounded = deque(maxlen=3)
+for i in range(5):
+    bounded.append(i)
+    print(f"  Append {i}: {list(bounded)}")`}
+  title="Python deque as Stack and Queue"
+/>
+
+## Application: BFS Using a Queue
+
+Breadth-First Search relies on a queue to explore nodes level by level. We enqueue neighbors and dequeue the next node to visit.
+
+<CodePlayground
+  code={`from collections import deque
+
+def bfs(graph, start):
+    visited = set([start])
+    queue = deque([start])
+    order = []
+
+    while queue:
+        node = queue.popleft()
+        order.append(node)
+        for neighbor in graph[node]:
+            if neighbor not in visited:
+                visited.add(neighbor)
+                queue.append(neighbor)
+
+    return order
+
+graph = {
+    'A': ['B', 'C'],
+    'B': ['A', 'D', 'E'],
+    'C': ['A', 'F'],
+    'D': ['B'],
+    'E': ['B', 'F'],
+    'F': ['C', 'E'],
+}
+
+print("BFS order:", bfs(graph, 'A'))`}
+  title="BFS with a Queue"
+/>
+
+## Application: Sliding Window Maximum
+
+Given an array and a window size $k$, find the maximum in each window as it slides from left to right. A deque efficiently maintains candidates in decreasing order.
+
+**Algorithm:** Maintain a deque of indices. Before adding a new index, remove all indices whose values are smaller (they can never be the max). Also remove indices that have fallen outside the window.
+
+Time: $O(n)$ because each element is added and removed from the deque at most once.
+
+<CodePlayground
+  code={`from collections import deque
+
+def max_sliding_window(nums, k):
+    result = []
+    dq = deque()  # stores indices, values in decreasing order
+
+    for i, val in enumerate(nums):
+        # Remove indices outside the window
+        while dq and dq[0] < i - k + 1:
+            dq.popleft()
+
+        # Remove smaller elements (they cannot be max)
+        while dq and nums[dq[-1]] <= val:
+            dq.pop()
+
+        dq.append(i)
+
+        # Window is fully formed starting at index k-1
+        if i >= k - 1:
+            result.append(nums[dq[0]])
+
+    return result
+
+nums = [1, 3, -1, -3, 5, 3, 6, 7]
+k = 3
+print(f"Array: {nums}, k={k}")
+print(f"Maximums: {max_sliding_window(nums, k)}")
+# Window positions:
+# [1 3 -1] -3 5 3 6 7  -> 3
+# 1 [3 -1 -3] 5 3 6 7  -> 3
+# 1 3 [-1 -3 5] 3 6 7  -> 5
+# 1 3 -1 [-3 5 3] 6 7  -> 5
+# 1 3 -1 -3 [5 3 6] 7  -> 6
+# 1 3 -1 -3 5 [3 6 7]  -> 7`}
+  title="Sliding Window Maximum with Deque"
+/>
+
+## Implement Queue Using Two Stacks
+
+A classic interview problem. Use two stacks to simulate FIFO behaviour. One stack handles enqueues, the other handles dequeues. When the dequeue stack is empty, transfer all elements from the enqueue stack (reversing the order).
+
+Each element is moved at most twice (once into each stack), so the **amortized** cost per operation is $O(1)$.
+
+<CodePlayground
+  code={`class QueueWithStacks:
+    def __init__(self):
+        self.in_stack = []   # for enqueue
+        self.out_stack = []  # for dequeue
+
+    def enqueue(self, item):
+        self.in_stack.append(item)
+
+    def dequeue(self):
+        if not self.out_stack:
+            # Transfer all items, reversing order
+            while self.in_stack:
+                self.out_stack.append(self.in_stack.pop())
+        if not self.out_stack:
+            raise IndexError("dequeue from empty queue")
+        return self.out_stack.pop()
+
+    def front(self):
+        if not self.out_stack:
+            while self.in_stack:
+                self.out_stack.append(self.in_stack.pop())
+        if not self.out_stack:
+            raise IndexError("front from empty queue")
+        return self.out_stack[-1]
+
+    def is_empty(self):
+        return not self.in_stack and not self.out_stack
+
+# Demo
+q = QueueWithStacks()
+q.enqueue(1)
+q.enqueue(2)
+q.enqueue(3)
+print(f"Front: {q.front()}")      # 1
+print(f"Dequeue: {q.dequeue()}")   # 1
+
+q.enqueue(4)
+print(f"Dequeue: {q.dequeue()}")   # 2
+print(f"Dequeue: {q.dequeue()}")   # 3
+print(f"Dequeue: {q.dequeue()}")   # 4
+print(f"Empty? {q.is_empty()}")    # True`}
+  title="Queue Using Two Stacks"
+/>
+
+## Complexity Summary
+
+| Implementation | Enqueue | Dequeue | Space |
+|---------------|---------|---------|-------|
+| List (`pop(0)`) | $O(1)$ | $O(n)$ | $O(n)$ |
+| `collections.deque` | $O(1)$ | $O(1)$ | $O(n)$ |
+| Circular array | $O(1)$ | $O(1)$ | $O(k)$ fixed |
+| Two stacks | $O(1)$ | $O(1)$ amortized | $O(n)$ |
+
+---
+
+## Key takeaways
+
+1. Queues follow **FIFO** --- first in, first out
+2. Never use `list.pop(0)` for a queue --- it is $O(n)$. Use `collections.deque` instead
+3. **Circular queues** are space-efficient when the capacity is bounded
+4. A **deque** supports $O(1)$ operations at both ends and can serve as both stack and queue
+5. The **two-stack queue** is a classic interview problem with $O(1)$ amortized operations
+6. Queues power **BFS**, task scheduling, and the sliding window maximum pattern
+
+---
+
+**Next:** [Monotonic Stack](/docs/stacks-and-queues/monotonic-stack) --- a powerful pattern for "next greater element" problems.

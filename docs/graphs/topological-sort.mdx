@@ -1,0 +1,307 @@
+---
+sidebar_position: 5
+title: "Topological Sort"
+---
+
+import CodePlayground from '@site/src/components/CodePlayground';
+
+# Topological Sort
+
+A **topological sort** of a directed acyclic graph (DAG) is a linear ordering of its vertices such that for every directed edge $(u, v)$, vertex $u$ comes before $v$ in the ordering. This is essential for problems involving **dependencies**: course prerequisites, build systems, task scheduling, and compilation order.
+
+## Prerequisites: DAG Only
+
+Topological sorting is only defined for **directed acyclic graphs**. If the graph contains a cycle, no valid ordering exists because cyclic dependencies cannot be linearized. Both algorithms below can detect cycles as a side effect.
+
+A DAG with $|V|$ vertices has at least one topological ordering. If the DAG has multiple valid orderings (which is common), the algorithm produces one of them.
+
+## Kahn's Algorithm (BFS + In-Degree)
+
+Kahn's algorithm uses BFS and the concept of **in-degree** (number of incoming edges):
+
+1. Compute the in-degree of every vertex.
+2. Enqueue all vertices with in-degree $0$ (no dependencies).
+3. While the queue is not empty:
+   - Dequeue vertex $u$ and add it to the result.
+   - For each neighbor $v$ of $u$, decrement $v$'s in-degree. If it becomes $0$, enqueue $v$.
+4. If the result contains all vertices, we have a valid topological order. Otherwise, a cycle exists.
+
+<CodePlayground code={`from collections import deque, defaultdict
+
+def topological_sort_kahn(num_nodes, edges):
+    """Kahn's algorithm: BFS-based topological sort.
+    Returns (order, is_valid). is_valid is False if a cycle exists.
+    """
+    graph = defaultdict(list)
+    in_degree = [0] * num_nodes
+
+    for u, v in edges:
+        graph[u].append(v)
+        in_degree[v] += 1
+
+    # Start with all nodes that have no incoming edges
+    queue = deque()
+    for i in range(num_nodes):
+        if in_degree[i] == 0:
+            queue.append(i)
+
+    order = []
+    while queue:
+        node = queue.popleft()
+        order.append(node)
+        for neighbor in graph[node]:
+            in_degree[neighbor] -= 1
+            if in_degree[neighbor] == 0:
+                queue.append(neighbor)
+
+    is_valid = len(order) == num_nodes
+    return order, is_valid
+
+# DAG: 5 -> 0, 5 -> 2, 4 -> 0, 4 -> 1, 2 -> 3, 3 -> 1
+edges = [(5,0), (5,2), (4,0), (4,1), (2,3), (3,1)]
+order, valid = topological_sort_kahn(6, edges)
+print(f"Topological order: {order}")
+print(f"Valid DAG: {valid}")
+
+# Graph WITH a cycle: 0 -> 1 -> 2 -> 0
+edges_cycle = [(0,1), (1,2), (2,0)]
+order2, valid2 = topological_sort_kahn(3, edges_cycle)
+print(f"\\nCyclic graph order: {order2}")
+print(f"Valid DAG: {valid2}")  # False
+`} title="Kahn's Algorithm (BFS-based)" />
+
+## DFS-Based Topological Sort
+
+The DFS approach leverages **post-order** traversal: a vertex is added to the result only after all its descendants have been fully explored. The final result is reversed.
+
+1. Run DFS from each unvisited vertex.
+2. After all neighbors of a vertex are explored (post-order), push it onto a stack.
+3. The stack (or reversed list) gives the topological order.
+
+<CodePlayground code={`from collections import defaultdict
+
+def topological_sort_dfs(num_nodes, edges):
+    """DFS-based topological sort.
+    Returns (order, is_valid). Uses three-color cycle detection.
+    """
+    WHITE, GRAY, BLACK = 0, 1, 2
+    graph = defaultdict(list)
+    for u, v in edges:
+        graph[u].append(v)
+
+    color = [WHITE] * num_nodes
+    result = []
+    has_cycle = False
+
+    def dfs(node):
+        nonlocal has_cycle
+        if has_cycle:
+            return
+        color[node] = GRAY
+        for neighbor in graph[node]:
+            if color[neighbor] == GRAY:
+                has_cycle = True
+                return
+            if color[neighbor] == WHITE:
+                dfs(neighbor)
+        color[node] = BLACK
+        result.append(node)  # Post-order
+
+    for i in range(num_nodes):
+        if color[i] == WHITE:
+            dfs(i)
+
+    if has_cycle:
+        return [], False
+
+    result.reverse()  # Reverse post-order = topological order
+    return result, True
+
+# DAG: 5 -> 0, 5 -> 2, 4 -> 0, 4 -> 1, 2 -> 3, 3 -> 1
+edges = [(5,0), (5,2), (4,0), (4,1), (2,3), (3,1)]
+order, valid = topological_sort_dfs(6, edges)
+print(f"DFS topological order: {order}")
+print(f"Valid DAG: {valid}")
+
+# Graph with cycle
+edges_cycle = [(0,1), (1,2), (2,0)]
+order2, valid2 = topological_sort_dfs(3, edges_cycle)
+print(f"\\nCyclic graph: {order2}")
+print(f"Valid DAG: {valid2}")
+`} title="DFS-Based Topological Sort" />
+
+## Problem: Course Schedule
+
+Given $n$ courses labeled $0$ to $n-1$ and a list of prerequisites where $[a, b]$ means you must take course $b$ before course $a$, determine if you can finish all courses (i.e., is a valid schedule possible?).
+
+This reduces to checking whether the prerequisite graph is a DAG.
+
+<CodePlayground code={`from collections import deque, defaultdict
+
+def can_finish(num_courses, prerequisites):
+    """Determine if all courses can be finished (cycle detection)."""
+    graph = defaultdict(list)
+    in_degree = [0] * num_courses
+
+    for course, prereq in prerequisites:
+        graph[prereq].append(course)
+        in_degree[course] += 1
+
+    queue = deque()
+    for i in range(num_courses):
+        if in_degree[i] == 0:
+            queue.append(i)
+
+    count = 0
+    while queue:
+        node = queue.popleft()
+        count += 1
+        for neighbor in graph[node]:
+            in_degree[neighbor] -= 1
+            if in_degree[neighbor] == 0:
+                queue.append(neighbor)
+
+    return count == num_courses
+
+# Can finish: 0<-1, 1<-2, 2<-3 (linear chain)
+prereqs1 = [[1,0], [2,1], [3,2]]
+print(f"Can finish (chain): {can_finish(4, prereqs1)}")
+
+# Cannot finish: 0<-1, 1<-0 (cycle)
+prereqs2 = [[1,0], [0,1]]
+print(f"Can finish (cycle): {can_finish(2, prereqs2)}")
+
+# Complex: can finish
+prereqs3 = [[1,0], [2,0], [3,1], [3,2]]
+print(f"Can finish (diamond): {can_finish(4, prereqs3)}")
+`} title="Course Schedule (Can Finish?)" />
+
+## Problem: Course Schedule II (Find the Order)
+
+Return the ordering of courses you should take, or an empty list if impossible.
+
+<CodePlayground code={`from collections import deque, defaultdict
+
+def find_order(num_courses, prerequisites):
+    """Return a valid course order, or empty if impossible."""
+    graph = defaultdict(list)
+    in_degree = [0] * num_courses
+
+    for course, prereq in prerequisites:
+        graph[prereq].append(course)
+        in_degree[course] += 1
+
+    queue = deque()
+    for i in range(num_courses):
+        if in_degree[i] == 0:
+            queue.append(i)
+
+    order = []
+    while queue:
+        node = queue.popleft()
+        order.append(node)
+        for neighbor in graph[node]:
+            in_degree[neighbor] -= 1
+            if in_degree[neighbor] == 0:
+                queue.append(neighbor)
+
+    if len(order) == num_courses:
+        return order
+    return []  # Cycle detected
+
+# Example 1: 4 courses
+prereqs = [[1,0], [2,0], [3,1], [3,2]]
+order = find_order(4, prereqs)
+print(f"Course order: {order}")  # e.g., [0, 1, 2, 3] or [0, 2, 1, 3]
+
+# Example 2: impossible
+prereqs2 = [[1,0], [0,1]]
+order2 = find_order(2, prereqs2)
+print(f"Course order (cycle): {order2}")  # []
+
+# Example 3: no prerequisites
+order3 = find_order(3, [])
+print(f"Course order (no prereqs): {order3}")  # [0, 1, 2]
+`} title="Course Schedule II (Find Order)" />
+
+## Problem: Parallel Course Scheduling
+
+Given courses with prerequisites, find the **minimum number of semesters** needed if you can take unlimited courses per semester (as long as prerequisites are met). This is the **longest path in the DAG**, which equals the number of levels in a BFS topological sort.
+
+<CodePlayground code={`from collections import deque, defaultdict
+
+def minimum_semesters(num_courses, prerequisites):
+    """Find minimum semesters to complete all courses.
+    This equals the length of the longest path in the DAG + 1.
+    """
+    graph = defaultdict(list)
+    in_degree = [0] * num_courses
+
+    for course, prereq in prerequisites:
+        graph[prereq].append(course)
+        in_degree[course] += 1
+
+    queue = deque()
+    for i in range(num_courses):
+        if in_degree[i] == 0:
+            queue.append(i)
+
+    semesters = 0
+    completed = 0
+
+    while queue:
+        semesters += 1
+        # Process all courses available this semester
+        for _ in range(len(queue)):
+            node = queue.popleft()
+            completed += 1
+            for neighbor in graph[node]:
+                in_degree[neighbor] -= 1
+                if in_degree[neighbor] == 0:
+                    queue.append(neighbor)
+
+    if completed == num_courses:
+        return semesters
+    return -1  # Cycle
+
+# Chain: 0 -> 1 -> 2 -> 3 (needs 4 semesters)
+prereqs1 = [[1,0], [2,1], [3,2]]
+print(f"Min semesters (chain): {minimum_semesters(4, prereqs1)}")
+
+# Diamond: 0 -> 1, 0 -> 2, 1 -> 3, 2 -> 3 (needs 3 semesters)
+prereqs2 = [[1,0], [2,0], [3,1], [3,2]]
+print(f"Min semesters (diamond): {minimum_semesters(4, prereqs2)}")
+
+# Wide: no dependencies (needs 1 semester)
+print(f"Min semesters (independent): {minimum_semesters(5, [])}")
+`} title="Minimum Semesters (Longest Path in DAG)" />
+
+## Kahn's vs DFS Comparison
+
+| Aspect | Kahn's (BFS) | DFS-Based |
+|--------|-------------|-----------|
+| Approach | BFS with in-degree tracking | Reverse post-order DFS |
+| Data structure | Queue + in-degree array | Recursion stack + color array |
+| Cycle detection | Check if result size equals $|V|$ | Back edge to GRAY node |
+| Lexicographic order | Use a min-heap instead of queue | Not straightforward |
+| Level-based grouping | Natural (process level by level) | Requires extra work |
+
+## Complexity Analysis
+
+| Operation | Time Complexity | Space Complexity |
+|-----------|----------------|-----------------|
+| Kahn's algorithm | $O(V + E)$ | $O(V + E)$ |
+| DFS-based topological sort | $O(V + E)$ | $O(V + E)$ |
+| Course schedule (cycle check) | $O(V + E)$ | $O(V + E)$ |
+| Minimum semesters | $O(V + E)$ | $O(V + E)$ |
+
+Both approaches run in $O(V + E)$ time: each vertex and edge is processed exactly once. Space is $O(V + E)$ for the adjacency list and auxiliary arrays.
+
+## Key Takeaways
+
+- Topological sort produces a linear ordering where every edge $(u, v)$ has $u$ before $v$. It only exists for **DAGs**.
+- **Kahn's algorithm** is intuitive: repeatedly remove nodes with no incoming edges. It naturally detects cycles (if the result is shorter than $|V|$, a cycle exists).
+- **DFS-based** topological sort uses reverse post-order. The three-color technique simultaneously detects cycles.
+- The **course schedule** problem is a direct application: check if a DAG exists (can finish) or produce the ordering (find order).
+- For **parallel scheduling** (minimum semesters), use level-by-level BFS; the number of levels is the answer.
+- When you need the **lexicographically smallest** topological order, use Kahn's with a min-heap instead of a plain queue.

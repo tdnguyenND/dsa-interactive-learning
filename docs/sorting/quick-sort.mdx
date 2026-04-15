@@ -1,0 +1,283 @@
+---
+sidebar_position: 3
+title: "Quick Sort"
+---
+
+import CodePlayground from '@site/src/components/CodePlayground';
+
+# Quick Sort
+
+Quick sort is a **divide-and-conquer** algorithm that picks a **pivot** element, partitions the array so that elements smaller than the pivot go left and larger go right, then recursively sorts each side. It achieves $O(n \log n)$ average-case time and sorts **in-place**.
+
+## How it works
+
+1. **Choose a pivot** from the array
+2. **Partition**: Rearrange so all elements $\leq$ pivot come before it, all elements $>$ pivot come after
+3. **Recurse** on the left and right subarrays
+
+```
+  pivot = 4
+  [3, 6, 8, 10, 1, 2, 4]
+            partition
+  [3, 1, 2] [4] [6, 8, 10]
+     recurse       recurse
+  [1, 2, 3] [4] [6, 8, 10]
+```
+
+The key insight: after partitioning, the **pivot is in its final sorted position**. No merge step is needed.
+
+## Lomuto partition scheme
+
+The Lomuto scheme uses the **last element** as pivot and maintains a boundary index `i` such that everything at index $\leq i$ is $\leq$ pivot.
+
+<CodePlayground
+  code={`def lomuto_partition(arr, lo, hi):
+    """Partition using last element as pivot.
+    Returns the final index of the pivot."""
+    pivot = arr[hi]
+    i = lo  # boundary for elements <= pivot
+    for j in range(lo, hi):
+        if arr[j] <= pivot:
+            arr[i], arr[j] = arr[j], arr[i]
+            i += 1
+    arr[i], arr[hi] = arr[hi], arr[i]
+    return i
+
+def quicksort(arr, lo=0, hi=None):
+    if hi is None:
+        hi = len(arr) - 1
+    if lo < hi:
+        p = lomuto_partition(arr, lo, hi)
+        quicksort(arr, lo, p - 1)
+        quicksort(arr, p + 1, hi)
+
+data = [10, 7, 8, 9, 1, 5]
+quicksort(data)
+print("Sorted:", data)
+
+data2 = [3, 6, 8, 10, 1, 2, 4]
+quicksort(data2)
+print("Sorted:", data2)`}
+  title="Quick Sort with Lomuto Partition"
+/>
+
+### Walkthrough of Lomuto partition
+
+For array `[3, 6, 8, 10, 1, 2, 4]` with pivot = 4:
+
+| j | arr\[j\] | arr\[j\] ≤ 4? | Action | Array state |
+|---|--------|-------------|--------|-------------|
+| 0 | 3 | Yes | swap(0,0), i=1 | \[3, 6, 8, 10, 1, 2, 4\] |
+| 1 | 6 | No | skip | \[3, 6, 8, 10, 1, 2, 4\] |
+| 2 | 8 | No | skip | \[3, 6, 8, 10, 1, 2, 4\] |
+| 3 | 10 | No | skip | \[3, 6, 8, 10, 1, 2, 4\] |
+| 4 | 1 | Yes | swap(1,4), i=2 | \[3, 1, 8, 10, 6, 2, 4\] |
+| 5 | 2 | Yes | swap(2,5), i=3 | \[3, 1, 2, 10, 6, 8, 4\] |
+
+Final swap: `arr[3]` and `arr[6]` gives `[3, 1, 2, 4, 6, 8, 10]`. Pivot 4 is at index 3 --- its final position.
+
+## Hoare partition scheme
+
+Hoare's original scheme uses **two pointers** moving inward from both ends. It is generally faster in practice because it makes fewer swaps on average.
+
+<CodePlayground
+  code={`def hoare_partition(arr, lo, hi):
+    """Hoare partition: pivot is first element.
+    Returns index such that arr[lo..j] <= pivot
+    and arr[j+1..hi] >= pivot."""
+    pivot = arr[lo]
+    i = lo - 1
+    j = hi + 1
+    while True:
+        i += 1
+        while arr[i] < pivot:
+            i += 1
+        j -= 1
+        while arr[j] > pivot:
+            j -= 1
+        if i >= j:
+            return j
+        arr[i], arr[j] = arr[j], arr[i]
+
+def quicksort_hoare(arr, lo=0, hi=None):
+    if hi is None:
+        hi = len(arr) - 1
+    if lo < hi:
+        p = hoare_partition(arr, lo, hi)
+        quicksort_hoare(arr, lo, p)
+        quicksort_hoare(arr, p + 1, hi)
+
+data = [10, 80, 30, 90, 40, 50, 70]
+quicksort_hoare(data)
+print("Sorted:", data)`}
+  title="Quick Sort with Hoare Partition"
+/>
+
+## Pivot selection strategies
+
+The pivot choice determines performance. A bad pivot (smallest or largest element) leads to $O(n^2)$.
+
+| Strategy | Description | Worst-case avoidance |
+|----------|-------------|---------------------|
+| **Last element** | Lomuto default | Poor on sorted input |
+| **First element** | Hoare default | Poor on sorted input |
+| **Median-of-three** | Median of first, middle, last | Good in practice |
+| **Random pivot** | Choose random index | Expected $O(n \log n)$ |
+
+<CodePlayground
+  code={`import random
+
+def quicksort_random(arr, lo=0, hi=None):
+    """Quick sort with random pivot selection."""
+    if hi is None:
+        hi = len(arr) - 1
+    if lo < hi:
+        # Random pivot: swap random element to end
+        rand_idx = random.randint(lo, hi)
+        arr[rand_idx], arr[hi] = arr[hi], arr[rand_idx]
+        # Standard Lomuto partition
+        pivot = arr[hi]
+        i = lo
+        for j in range(lo, hi):
+            if arr[j] <= pivot:
+                arr[i], arr[j] = arr[j], arr[i]
+                i += 1
+        arr[i], arr[hi] = arr[hi], arr[i]
+        quicksort_random(arr, lo, i - 1)
+        quicksort_random(arr, i + 1, hi)
+
+# Test on already-sorted input (worst case for naive pivot)
+data = list(range(20, 0, -1))
+print("Before:", data)
+quicksort_random(data)
+print("After: ", data)`}
+  title="Quick Sort with Random Pivot"
+/>
+
+## Complexity analysis
+
+| Case | Time | When it happens |
+|------|------|----------------|
+| **Best** | $O(n \log n)$ | Pivot always splits evenly |
+| **Average** | $O(n \log n)$ | Random or good pivot |
+| **Worst** | $O(n^2)$ | Pivot is always min or max (sorted input + bad pivot) |
+
+**Space complexity**: $O(\log n)$ average for the recursion stack, $O(n)$ worst case.
+
+**Stability**: Quick sort is **not stable** --- equal elements may be reordered during partitioning.
+
+### Why $O(n \log n)$ on average?
+
+Each partition places one element in its final position and splits the problem. With a random pivot, the expected split ratio produces $O(\log n)$ levels of recursion, each doing $O(n)$ work across all partitions at that level.
+
+## Quickselect: finding the kth smallest element
+
+Quickselect uses the partition step to find the $k$-th smallest element in $O(n)$ average time --- without fully sorting.
+
+<CodePlayground
+  code={`def quickselect(arr, k):
+    """Find the k-th smallest element (0-indexed).
+    Average O(n), worst O(n^2)."""
+    import random
+
+    def select(lo, hi):
+        if lo == hi:
+            return arr[lo]
+        # Random pivot
+        rand_idx = random.randint(lo, hi)
+        arr[rand_idx], arr[hi] = arr[hi], arr[rand_idx]
+        # Lomuto partition
+        pivot = arr[hi]
+        i = lo
+        for j in range(lo, hi):
+            if arr[j] <= pivot:
+                arr[i], arr[j] = arr[j], arr[i]
+                i += 1
+        arr[i], arr[hi] = arr[hi], arr[i]
+        # Recurse only on the side containing k
+        if k == i:
+            return arr[i]
+        elif k < i:
+            return select(lo, i - 1)
+        else:
+            return select(i + 1, hi)
+
+    return select(0, len(arr) - 1)
+
+data = [7, 10, 4, 3, 20, 15]
+print("Array:", data)
+print("1st smallest:", quickselect(data[:], 0))
+print("3rd smallest:", quickselect(data[:], 2))
+print("Median:", quickselect(data[:], len(data) // 2))`}
+  title="Quickselect Algorithm"
+/>
+
+### Quickselect complexity
+
+| Case | Time |
+|------|------|
+| **Average** | $O(n)$ --- each recursive call works on roughly half the array |
+| **Worst** | $O(n^2)$ --- same degenerate pivot issue as quick sort |
+
+The **median-of-medians** algorithm guarantees $O(n)$ worst case for selection but has a large constant factor and is rarely used in practice.
+
+## Three-way partition (Dutch National Flag)
+
+When the array has **many duplicate keys**, standard quick sort wastes time re-partitioning equal elements. Three-way partitioning groups elements into three regions: less than, equal to, and greater than the pivot.
+
+<CodePlayground
+  code={`def quicksort_3way(arr, lo=0, hi=None):
+    """Quick sort with 3-way partition for duplicate keys."""
+    if hi is None:
+        hi = len(arr) - 1
+    if lo >= hi:
+        return
+    pivot = arr[lo]
+    lt = lo      # arr[lo..lt-1]  < pivot
+    i  = lo + 1  # arr[lt..i-1]  == pivot
+    gt = hi      # arr[gt+1..hi]  > pivot
+    while i <= gt:
+        if arr[i] < pivot:
+            arr[lt], arr[i] = arr[i], arr[lt]
+            lt += 1
+            i += 1
+        elif arr[i] > pivot:
+            arr[i], arr[gt] = arr[gt], arr[i]
+            gt -= 1
+        else:
+            i += 1
+    quicksort_3way(arr, lo, lt - 1)
+    quicksort_3way(arr, gt + 1, hi)
+
+data = [4, 9, 4, 4, 1, 9, 4, 4, 9, 4, 4, 1, 4]
+print("Before:", data)
+quicksort_3way(data)
+print("After: ", data)`}
+  title="Three-Way Quick Sort"
+/>
+
+## Quick sort vs. merge sort
+
+| Property | Quick sort | Merge sort |
+|----------|-----------|------------|
+| **Average time** | $O(n \log n)$ | $O(n \log n)$ |
+| **Worst time** | $O(n^2)$ | $O(n \log n)$ |
+| **Space** | $O(\log n)$ | $O(n)$ |
+| **In-place** | Yes | No |
+| **Stable** | No | Yes |
+| **Cache performance** | Excellent | Good |
+| **Practical speed** | Often faster | Consistent |
+
+Quick sort is preferred when:
+- Memory is limited (in-place)
+- Average-case performance matters more than worst-case guarantees
+- Data fits in cache (sequential access pattern within partitions)
+
+## Key takeaways
+
+1. **Quick sort partitions around a pivot** and recursively sorts each side --- no merge step needed.
+2. **Lomuto partition** is simpler to implement; **Hoare partition** is faster in practice (fewer swaps).
+3. **Pivot selection is critical**: random or median-of-three avoids the $O(n^2)$ worst case on sorted input.
+4. **Quickselect** adapts the partition idea to find the $k$-th element in $O(n)$ average time.
+5. **Three-way partitioning** handles arrays with many duplicates efficiently.
+6. Quick sort is **in-place** and **not stable** --- use merge sort when stability or worst-case guarantees are required.

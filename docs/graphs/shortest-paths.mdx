@@ -1,0 +1,334 @@
+---
+sidebar_position: 4
+title: "Shortest Paths"
+---
+
+import CodePlayground from '@site/src/components/CodePlayground';
+
+# Shortest Path Algorithms
+
+Finding the shortest path between nodes is one of the most fundamental graph problems. While BFS solves this for unweighted graphs, **weighted graphs** require specialized algorithms. This page covers two essential algorithms: **Dijkstra's** for non-negative weights and **Bellman-Ford** for graphs with negative weights.
+
+## Problem Definition
+
+Given a weighted directed graph $G = (V, E)$ with weight function $w: E \to \mathbb{R}$ and a source vertex $s$, find the shortest-weight path from $s$ to every other vertex. The shortest path weight from $s$ to $v$ is defined as:
+
+$$\delta(s, v) = \min \{ w(p) : p \text{ is a path from } s \text{ to } v \}$$
+
+If no path exists, $\delta(s, v) = \infty$.
+
+## Dijkstra's Algorithm
+
+Dijkstra's is a **greedy** algorithm that works on graphs with **non-negative edge weights**. It maintains a priority queue (min-heap) of vertices ordered by their tentative distance from the source.
+
+### How It Works
+
+1. Initialize $dist[s] = 0$ and $dist[v] = \infty$ for all other vertices.
+2. Push $(0, s)$ into a min-heap.
+3. While the heap is not empty:
+   - Pop the vertex $u$ with minimum distance.
+   - For each neighbor $v$ of $u$, if $dist[u] + w(u, v) < dist[v]$, update $dist[v]$ and push $(dist[v], v)$ into the heap.
+
+The key insight is that when a vertex is popped from the heap, its shortest distance is finalized (because all weights are non-negative).
+
+<CodePlayground code={`import heapq
+
+def dijkstra(graph, start):
+    """Dijkstra's shortest path algorithm.
+    graph: {node: [(neighbor, weight), ...]}
+    Returns: distances dict and parent dict for path reconstruction.
+    """
+    dist = {start: 0}
+    parent = {start: None}
+    heap = [(0, start)]
+    visited = set()
+
+    while heap:
+        d, u = heapq.heappop(heap)
+        if u in visited:
+            continue
+        visited.add(u)
+
+        for v, weight in graph.get(u, []):
+            new_dist = d + weight
+            if new_dist < dist.get(v, float('inf')):
+                dist[v] = new_dist
+                parent[v] = u
+                heapq.heappush(heap, (new_dist, v))
+
+    return dist, parent
+
+def reconstruct_path(parent, target):
+    path = []
+    node = target
+    while node is not None:
+        path.append(node)
+        node = parent.get(node)
+    return path[::-1]
+
+# Weighted directed graph
+#   0 --4--> 1 --1--> 3
+#   |        ^        ^
+#   2        |        |
+#   |        3        2
+#   v        |        |
+#   2 --1--> 4 --5--> 3 (via edge 4->3 weight 5)
+graph = {
+    0: [(1, 4), (2, 2)],
+    1: [(3, 1)],
+    2: [(4, 1)],
+    3: [],
+    4: [(1, 3), (3, 5)],
+}
+
+dist, parent = dijkstra(graph, 0)
+print("Shortest distances from node 0:")
+for node in sorted(dist):
+    path = reconstruct_path(parent, node)
+    print(f"  To {node}: dist={dist[node]}, path={path}")
+`} title="Dijkstra's Algorithm" />
+
+### Dijkstra on a Weighted Grid
+
+A common variant: find the minimum-cost path through a grid where each cell has a traversal cost.
+
+<CodePlayground code={`import heapq
+
+def min_cost_path(grid):
+    """Find minimum cost path from top-left to bottom-right."""
+    rows, cols = len(grid), len(grid[0])
+    dist = [[float('inf')] * cols for _ in range(rows)]
+    dist[0][0] = grid[0][0]
+    heap = [(grid[0][0], 0, 0)]
+
+    while heap:
+        d, r, c = heapq.heappop(heap)
+        if d > dist[r][c]:
+            continue
+        if r == rows - 1 and c == cols - 1:
+            return d
+
+        for dr, dc in [(0,1),(0,-1),(1,0),(-1,0)]:
+            nr, nc = r + dr, c + dc
+            if 0 <= nr < rows and 0 <= nc < cols:
+                new_dist = d + grid[nr][nc]
+                if new_dist < dist[nr][nc]:
+                    dist[nr][nc] = new_dist
+                    heapq.heappush(heap, (new_dist, nr, nc))
+
+    return dist[rows-1][cols-1]
+
+grid = [
+    [1, 3, 1, 2],
+    [1, 5, 1, 3],
+    [4, 2, 1, 1],
+    [2, 3, 2, 1],
+]
+print(f"Minimum cost path: {min_cost_path(grid)}")
+
+grid2 = [
+    [1, 2, 3],
+    [4, 5, 6],
+    [7, 8, 9],
+]
+print(f"Minimum cost path: {min_cost_path(grid2)}")
+`} title="Dijkstra on a Weighted Grid" />
+
+## Bellman-Ford Algorithm
+
+Bellman-Ford handles graphs with **negative edge weights** and can detect **negative weight cycles**. It relaxes all edges $|V| - 1$ times, since the shortest path can have at most $|V| - 1$ edges.
+
+### How It Works
+
+1. Initialize $dist[s] = 0$ and $dist[v] = \infty$ for all other vertices.
+2. Repeat $|V| - 1$ times: for every edge $(u, v, w)$, if $dist[u] + w < dist[v]$, update $dist[v]$.
+3. Perform one more iteration. If any distance still decreases, a **negative cycle** exists.
+
+<CodePlayground code={`def bellman_ford(num_nodes, edges, start):
+    """Bellman-Ford shortest path algorithm.
+    edges: list of (u, v, weight)
+    Returns: (distances, parents, has_negative_cycle)
+    """
+    dist = [float('inf')] * num_nodes
+    parent = [-1] * num_nodes
+    dist[start] = 0
+
+    # Relax all edges V-1 times
+    for i in range(num_nodes - 1):
+        updated = False
+        for u, v, w in edges:
+            if dist[u] != float('inf') and dist[u] + w < dist[v]:
+                dist[v] = dist[u] + w
+                parent[v] = u
+                updated = True
+        if not updated:
+            break  # Early termination
+
+    # Check for negative weight cycles
+    for u, v, w in edges:
+        if dist[u] != float('inf') and dist[u] + w < dist[v]:
+            return dist, parent, True  # Negative cycle detected
+
+    return dist, parent, False
+
+# Graph with no negative cycle
+edges1 = [
+    (0, 1, 4), (0, 2, 2),
+    (1, 3, 3), (2, 1, -1),
+    (2, 3, 5), (3, 4, 2),
+]
+dist, parent, neg_cycle = bellman_ford(5, edges1, 0)
+print("=== Graph without negative cycle ===")
+print(f"Negative cycle: {neg_cycle}")
+print("Distances from 0:", {i: d for i, d in enumerate(dist)})
+
+# Graph WITH a negative cycle: 1 -> 2 -> 3 -> 1 (sum = -1)
+edges2 = [
+    (0, 1, 5),
+    (1, 2, -2),
+    (2, 3, -1),
+    (3, 1, 2),
+    (3, 4, 3),
+]
+dist2, _, neg_cycle2 = bellman_ford(5, edges2, 0)
+print("\\n=== Graph with negative cycle ===")
+print(f"Negative cycle: {neg_cycle2}")
+`} title="Bellman-Ford Algorithm" />
+
+### Bellman-Ford with Path Reconstruction
+
+<CodePlayground code={`def bellman_ford_with_path(num_nodes, edges, start, end):
+    """Bellman-Ford with path reconstruction."""
+    dist = [float('inf')] * num_nodes
+    parent = [-1] * num_nodes
+    dist[start] = 0
+
+    for _ in range(num_nodes - 1):
+        for u, v, w in edges:
+            if dist[u] != float('inf') and dist[u] + w < dist[v]:
+                dist[v] = dist[u] + w
+                parent[v] = u
+
+    # Check for negative cycles
+    for u, v, w in edges:
+        if dist[u] != float('inf') and dist[u] + w < dist[v]:
+            return None, None  # Negative cycle
+
+    if dist[end] == float('inf'):
+        return float('inf'), []
+
+    # Reconstruct path
+    path = []
+    node = end
+    while node != -1:
+        path.append(node)
+        node = parent[node]
+    path.reverse()
+
+    return dist[end], path
+
+edges = [
+    (0, 1, 6), (0, 2, 7),
+    (1, 3, 5), (1, 2, 8), (1, 4, -4),
+    (2, 3, -3), (2, 4, 9),
+    (3, 1, -2),
+    (4, 0, 2), (4, 3, 7),
+]
+
+for target in range(5):
+    cost, path = bellman_ford_with_path(5, edges, 0, target)
+    print(f"To node {target}: cost={cost}, path={path}")
+`} title="Bellman-Ford with Path Reconstruction" />
+
+## Dijkstra vs Bellman-Ford
+
+| Aspect | Dijkstra | Bellman-Ford |
+|--------|----------|-------------|
+| Time complexity | $O((V + E) \log V)$ with binary heap | $O(V \cdot E)$ |
+| Space complexity | $O(V)$ | $O(V)$ |
+| Negative weights | Not supported | Supported |
+| Negative cycle detection | No | Yes |
+| Approach | Greedy (min-heap) | Dynamic programming (relaxation) |
+| Typical use | Road networks, GPS | Currency arbitrage, network routing |
+
+## Algorithm Selection Guide
+
+| Scenario | Best Algorithm | Reason |
+|----------|---------------|--------|
+| Unweighted graph | BFS | $O(V + E)$, simplest |
+| Non-negative weights | Dijkstra | $O((V + E) \log V)$, fastest |
+| Negative weights possible | Bellman-Ford | Handles negatives, $O(VE)$ |
+| Need to detect negative cycles | Bellman-Ford | Extra iteration check |
+| All-pairs shortest paths | Floyd-Warshall | $O(V^3)$, simple DP |
+| Sparse graph, all-pairs | Run Dijkstra from each vertex | $O(V(V+E) \log V)$ |
+| DAG (directed acyclic) | Topological sort + relaxation | $O(V + E)$ |
+
+## Common Pitfalls
+
+<CodePlayground code={`import heapq
+
+# Pitfall 1: Using Dijkstra with negative weights gives WRONG results
+def dijkstra_broken(graph, start):
+    dist = {start: 0}
+    heap = [(0, start)]
+    visited = set()
+    while heap:
+        d, u = heapq.heappop(heap)
+        if u in visited:
+            continue
+        visited.add(u)
+        for v, w in graph.get(u, []):
+            nd = d + w
+            if nd < dist.get(v, float('inf')):
+                dist[v] = nd
+                heapq.heappush(heap, (nd, v))
+    return dist
+
+# Graph where Dijkstra fails:
+# 0 -> 1 (weight 5)
+# 0 -> 2 (weight 2)
+# 2 -> 1 (weight -4)  <-- negative weight
+# Correct shortest to 1: 0->2->1 = 2 + (-4) = -2
+# Dijkstra may incorrectly report 5
+graph_neg = {
+    0: [(1, 5), (2, 2)],
+    2: [(1, -4)],
+}
+
+dijk_dist = dijkstra_broken(graph_neg, 0)
+print(f"Dijkstra says dist to 1: {dijk_dist.get(1)} (may be wrong!)")
+
+# Bellman-Ford gives correct answer
+edges = [(0,1,5), (0,2,2), (2,1,-4)]
+from collections import defaultdict
+dist = [float('inf')] * 3
+dist[0] = 0
+for _ in range(2):
+    for u, v, w in edges:
+        if dist[u] + w < dist[v]:
+            dist[v] = dist[u] + w
+print(f"Bellman-Ford says dist to 1: {dist[1]} (correct!)")
+
+# Pitfall 2: Forgetting the visited check in Dijkstra
+# leads to processing the same node multiple times (TLE)
+print("\\nAlways skip already-visited nodes in Dijkstra!")
+`} title="Common Pitfalls" />
+
+## Complexity Summary
+
+| Algorithm | Time | Space | Negative Weights | Negative Cycle Detection |
+|-----------|------|-------|-----------------|-------------------------|
+| BFS (unweighted) | $O(V + E)$ | $O(V)$ | N/A | No |
+| Dijkstra (binary heap) | $O((V + E) \log V)$ | $O(V + E)$ | No | No |
+| Dijkstra (Fibonacci heap) | $O(V \log V + E)$ | $O(V + E)$ | No | No |
+| Bellman-Ford | $O(V \cdot E)$ | $O(V)$ | Yes | Yes |
+| Floyd-Warshall | $O(V^3)$ | $O(V^2)$ | Yes | Yes |
+
+## Key Takeaways
+
+- **Dijkstra's algorithm** is the standard choice for shortest paths in graphs with non-negative weights. It runs in $O((V+E) \log V)$ with a binary heap.
+- Dijkstra is **greedy**: once a node is popped from the heap, its shortest distance is final. This property breaks with negative edges.
+- **Bellman-Ford** handles negative weights by relaxing all edges $|V|-1$ times. It runs in $O(V \cdot E)$.
+- Bellman-Ford detects **negative weight cycles** with one additional iteration: if any distance decreases, a negative cycle is reachable from the source.
+- For **unweighted graphs**, use BFS. For **DAGs**, use topological sort with single-pass relaxation for $O(V+E)$.
+- Always check: are weights non-negative? If yes, use Dijkstra. If no, use Bellman-Ford.

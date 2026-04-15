@@ -1,0 +1,285 @@
+---
+sidebar_position: 3
+title: "Monotonic Stack"
+---
+
+import CodePlayground from '@site/src/components/CodePlayground';
+
+# Monotonic Stack
+
+A **monotonic stack** is a stack whose elements are always in sorted order (either increasing or decreasing from bottom to top). Before pushing a new element, we pop all elements that violate the monotonic property. This simple technique solves an entire family of problems in $O(n)$ time that would otherwise require $O(n^2)$.
+
+## When to Use a Monotonic Stack
+
+Look for these patterns:
+- "Find the **next greater** (or smaller) element" for every element in an array
+- "Find the **previous greater** (or smaller) element"
+- Problems involving **spans**, **rectangles**, or **water trapping** that depend on relative heights
+
+## Monotonic Decreasing Stack (Next Greater Element)
+
+A **decreasing stack** keeps elements in decreasing order from bottom to top. When we encounter a value larger than the top, we pop --- the popped element's "next greater element" is the current value.
+
+**Template:**
+
+```python
+def next_greater(nums):
+    n = len(nums)
+    result = [-1] * n
+    stack = []  # stores indices
+    for i in range(n):
+        while stack and nums[stack[-1]] < nums[i]:
+            idx = stack.pop()
+            result[idx] = nums[i]
+        stack.append(i)
+    return result
+```
+
+Each element is pushed once and popped at most once, so the total time is $O(n)$.
+
+## Problem 1: Next Greater Element
+
+Given an array, for each element find the first element to its right that is strictly greater. If none exists, return $-1$.
+
+**Step-by-step for** `[2, 1, 2, 4, 3]`:
+
+| Step | Current | Stack (values) | Action | Result so far |
+|------|---------|---------------|--------|--------------|
+| 0 | 2 | `[]` | Push 0 | `[-1,-1,-1,-1,-1]` |
+| 1 | 1 | `[2]` | 1 < 2, push 1 | unchanged |
+| 2 | 2 | `[2,1]` | 2 > 1, pop idx 1 -> result[1]=2. Then push 2 | `[-1,2,-1,-1,-1]` |
+| 3 | 4 | `[2,2]` | 4 > 2, pop idx 2 -> result[2]=4. 4 > 2, pop idx 0 -> result[0]=4. Push 3 | `[4,2,4,-1,-1]` |
+| 4 | 3 | `[4]` | 3 < 4, push 4 | unchanged |
+
+Final: `[4, 2, 4, -1, -1]`
+
+<CodePlayground
+  code={`def next_greater_element(nums):
+    n = len(nums)
+    result = [-1] * n
+    stack = []  # monotonic decreasing stack of indices
+
+    for i in range(n):
+        # Pop all elements that are smaller than current
+        while stack and nums[stack[-1]] < nums[i]:
+            idx = stack.pop()
+            result[idx] = nums[i]
+        stack.append(i)
+
+    return result
+
+nums = [2, 1, 2, 4, 3]
+res = next_greater_element(nums)
+print(f"Array:         {nums}")
+print(f"Next greater:  {res}")
+print()
+
+nums2 = [4, 5, 2, 25]
+res2 = next_greater_element(nums2)
+print(f"Array:         {nums2}")
+print(f"Next greater:  {res2}")`}
+  title="Next Greater Element"
+/>
+
+## Problem 2: Daily Temperatures
+
+Given daily temperatures, for each day find how many days you have to wait for a warmer temperature. This is the "next greater element" pattern in disguise --- the answer is the index difference.
+
+<CodePlayground
+  code={`def daily_temperatures(temperatures):
+    n = len(temperatures)
+    answer = [0] * n
+    stack = []  # indices of days waiting for a warmer day
+
+    for i in range(n):
+        while stack and temperatures[stack[-1]] < temperatures[i]:
+            prev = stack.pop()
+            answer[prev] = i - prev  # days to wait
+        stack.append(i)
+
+    return answer
+
+temps = [73, 74, 75, 71, 69, 72, 76, 73]
+result = daily_temperatures(temps)
+print(f"Temperatures: {temps}")
+print(f"Days to wait: {result}")
+# Explanation:
+# 73 -> 74 (1 day), 74 -> 75 (1 day), 75 -> 76 (4 days)
+# 71 -> 72 (2 days), 69 -> 72 (1 day), 72 -> 76 (1 day)
+# 76 -> none (0), 73 -> none (0)`}
+  title="Daily Temperatures"
+/>
+
+## Problem 3: Largest Rectangle in Histogram
+
+Given an array of bar heights, find the area of the largest rectangle that fits within the histogram. This is one of the most celebrated monotonic stack problems.
+
+**Key insight:** For each bar, the largest rectangle using that bar's height extends left and right until it hits a shorter bar. A monotonic increasing stack helps us find those boundaries efficiently.
+
+**Algorithm:**
+1. Maintain a stack of indices in increasing order of heights.
+2. When the current height is smaller than the stack top, pop the top. The popped bar's rectangle extends from the new stack top + 1 to the current index - 1.
+3. After processing all bars, pop remaining bars with `right boundary = n`.
+
+Time: $O(n)$, Space: $O(n)$.
+
+<CodePlayground
+  code={`def largest_rectangle(heights):
+    stack = []  # monotonic increasing stack of indices
+    max_area = 0
+    n = len(heights)
+
+    for i in range(n + 1):
+        # Use height 0 as sentinel to flush the stack
+        h = heights[i] if i < n else 0
+
+        while stack and heights[stack[-1]] > h:
+            height = heights[stack.pop()]
+            # Width: from (stack top + 1) to (i - 1)
+            width = i if not stack else i - stack[-1] - 1
+            area = height * width
+            max_area = max(max_area, area)
+
+        stack.append(i)
+
+    return max_area
+
+# Example walkthrough
+heights = [2, 1, 5, 6, 2, 3]
+print(f"Heights: {heights}")
+print(f"Largest rectangle area: {largest_rectangle(heights)}")
+# The largest rectangle is formed by heights[2..3] = [5,6]
+# with height 5 and width 2 -> area = 10
+
+heights2 = [2, 4]
+print(f"\\nHeights: {heights2}")
+print(f"Largest rectangle area: {largest_rectangle(heights2)}")
+
+heights3 = [6, 2, 5, 4, 5, 1, 6]
+print(f"\\nHeights: {heights3}")
+print(f"Largest rectangle area: {largest_rectangle(heights3)}")`}
+  title="Largest Rectangle in Histogram"
+/>
+
+### Walkthrough for `[2, 1, 5, 6, 2, 3]`
+
+| i | h | Stack (indices) | Pop & compute |
+|---|---|-----------------|---------------|
+| 0 | 2 | `[0]` | --- |
+| 1 | 1 | `[0]` -> pop 0: area = $2 \times 1 = 2$, then `[1]` | max=2 |
+| 2 | 5 | `[1,2]` | --- |
+| 3 | 6 | `[1,2,3]` | --- |
+| 4 | 2 | pop 3: area = $6 \times 1 = 6$, pop 2: area = $5 \times 2 = 10$ -> `[1,4]` | max=10 |
+| 5 | 3 | `[1,4,5]` | --- |
+| 6 | 0 (sentinel) | pop 5: $3 \times 1 = 3$, pop 4: $2 \times 4 = 8$, pop 1: $1 \times 6 = 6$ | max=10 |
+
+**Answer: 10**
+
+## Problem 4: Trapping Rain Water
+
+Given elevation heights, compute how much rain water can be trapped after raining.
+
+**Monotonic stack approach:** Maintain a decreasing stack. When we find a bar taller than the stack top, water is trapped between the current bar and the bar underneath the top. The trapped amount depends on the shorter of the two bounding bars minus the bottom.
+
+<CodePlayground
+  code={`def trap(height):
+    stack = []
+    water = 0
+
+    for i in range(len(height)):
+        while stack and height[i] > height[stack[-1]]:
+            bottom = stack.pop()
+            if not stack:
+                break
+            # Width between the two bounding bars
+            width = i - stack[-1] - 1
+            # Bounded height minus the bottom
+            bounded_height = min(height[i], height[stack[-1]]) - height[bottom]
+            water += width * bounded_height
+        stack.append(i)
+
+    return water
+
+# Classic example
+heights = [0, 1, 0, 2, 1, 0, 1, 3, 2, 1, 2, 1]
+print(f"Heights: {heights}")
+print(f"Trapped water: {trap(heights)}")  # 6
+
+heights2 = [4, 2, 0, 3, 2, 5]
+print(f"\\nHeights: {heights2}")
+print(f"Trapped water: {trap(heights2)}")  # 9`}
+  title="Trapping Rain Water (Monotonic Stack)"
+/>
+
+For comparison, here is the classic two-pointer approach that also runs in $O(n)$ time and $O(1)$ space:
+
+<CodePlayground
+  code={`def trap_two_pointers(height):
+    left, right = 0, len(height) - 1
+    left_max = right_max = 0
+    water = 0
+
+    while left < right:
+        if height[left] < height[right]:
+            if height[left] >= left_max:
+                left_max = height[left]
+            else:
+                water += left_max - height[left]
+            left += 1
+        else:
+            if height[right] >= right_max:
+                right_max = height[right]
+            else:
+                water += right_max - height[right]
+            right -= 1
+
+    return water
+
+heights = [0, 1, 0, 2, 1, 0, 1, 3, 2, 1, 2, 1]
+print(f"Heights: {heights}")
+print(f"Trapped water: {trap_two_pointers(heights)}")
+
+heights2 = [4, 2, 0, 3, 2, 5]
+print(f"\\nHeights: {heights2}")
+print(f"Trapped water: {trap_two_pointers(heights2)}")`}
+  title="Trapping Rain Water (Two-Pointer Approach)"
+/>
+
+## Monotonic Increasing vs Decreasing
+
+| Stack type | Order (bottom to top) | Finds |
+|------------|----------------------|-------|
+| Decreasing | Large -> Small | Next **greater** element |
+| Increasing | Small -> Large | Next **smaller** element |
+
+To find the **previous** greater/smaller element, iterate from right to left instead of left to right.
+
+## Pattern Summary
+
+The monotonic stack pattern always follows the same skeleton:
+
+```python
+stack = []
+for i in range(n):
+    while stack and compare(nums[stack[-1]], nums[i]):
+        idx = stack.pop()
+        # Process: idx found its answer at i
+    stack.append(i)
+```
+
+The `compare` function determines whether the stack is increasing or decreasing. Everything else is problem-specific detail layered on top.
+
+---
+
+## Key takeaways
+
+1. A **monotonic stack** maintains sorted order by popping violating elements before each push
+2. Every element is pushed and popped at most once, giving $O(n)$ total time
+3. **Next greater element** uses a decreasing stack; **next smaller** uses an increasing stack
+4. **Daily temperatures** is next-greater-element where the answer is the index difference
+5. **Largest rectangle in histogram** uses an increasing stack to find the left and right boundaries of each bar
+6. **Trapping rain water** can be solved with a decreasing stack by computing water layer by layer
+
+---
+
+**Next:** [Hash Tables](/docs/hash-tables/introduction) --- fast key-value lookups with hash functions.

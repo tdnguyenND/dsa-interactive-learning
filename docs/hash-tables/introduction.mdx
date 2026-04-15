@@ -1,59 +1,266 @@
 ---
 sidebar_position: 1
 title: "Hash Tables"
+slug: /hash-tables/introduction
 ---
 
 import CodePlayground from '@site/src/components/CodePlayground';
 
 # Hash Tables
 
-A hash table (or hash map) is a data structure that maps keys to values using a hash function. This page covers how hash tables work, dictionary operations in Python, and handling collisions.
+A **hash table** (or hash map) maps keys to values using a **hash function**. It is one of the most important data structures in computer science, providing $O(1)$ average-case lookups, insertions, and deletions.
 
-## Overview
+## How Hash Tables Work
 
-Hash tables provide average O(1) time complexity for insertions, deletions, and lookups, making them one of the most efficient data structures for key-value storage. Python's built-in `dict` is implemented as a hash table.
+1. **Hash function** --- Takes a key and produces an integer (the hash code).
+2. **Index computation** --- The hash code is mapped to a bucket index: `index = hash(key) % num_buckets`.
+3. **Storage** --- The value is stored in the bucket at that index.
 
-## Implementation
+When two different keys map to the same bucket, we have a **collision**. The hash table needs a strategy to handle this.
+
+## Collision Handling
+
+### Chaining (Separate Chaining)
+
+Each bucket stores a linked list (or any collection) of key-value pairs. On collision, the new pair is appended to the list at that bucket.
+
+- **Lookup:** Hash the key, go to the bucket, scan the chain for the matching key.
+- **Worst case:** If all keys collide into one bucket, operations degrade to $O(n)$.
+- **Advantage:** Simple to implement and handles high load factors gracefully.
+
+### Open Addressing
+
+All entries are stored directly in the bucket array. On collision, we **probe** for the next available slot.
+
+| Probing strategy | Probe sequence | Pros | Cons |
+|-----------------|----------------|------|------|
+| **Linear probing** | $h(k) + 1, h(k) + 2, \ldots$ | Cache-friendly | Primary clustering |
+| **Quadratic probing** | $h(k) + 1^2, h(k) + 2^2, \ldots$ | Reduces clustering | Secondary clustering |
+| **Double hashing** | $h(k) + i \cdot h_2(k)$ | Best distribution | Extra hash function |
+
+## Load Factor and Rehashing
+
+The **load factor** is $\alpha = \frac{n}{m}$ where $n$ is the number of entries and $m$ is the number of buckets.
+
+- For chaining, performance degrades as $\alpha$ grows (longer chains).
+- For open addressing, the table must have $\alpha < 1$ (there must be empty slots).
+- When $\alpha$ exceeds a threshold (typically 0.7), the table **rehashes**: allocate a larger array (usually $2m$) and reinsert all entries.
+
+Rehashing costs $O(n)$ but happens rarely enough that the **amortized** cost of insertion remains $O(1)$.
+
+## Python dict Internals (Brief)
+
+Python's `dict` uses **open addressing with a custom probe sequence**. Key details:
+
+- The hash table starts at size 8 and grows by $\times 2$ or $\times 4$.
+- It rehashes when the table is about 2/3 full ($\alpha \approx 0.67$).
+- Since Python 3.7, insertion order is preserved (the implementation uses a compact array plus an indices table).
+- The built-in `hash()` function handles strings, ints, tuples, and any object with `__hash__`.
+
+## Implementation from Scratch
+
+Below is a hash table with **separate chaining**. Each bucket is a list of `(key, value)` pairs.
 
 <CodePlayground
-  code={`# Hash Table Operations using Python dict
-phone_book = {}
+  code={`class HashTable:
+    def __init__(self, capacity=8):
+        self.capacity = capacity
+        self.size = 0
+        self.buckets = [[] for _ in range(capacity)]
+        self.load_factor_threshold = 0.75
 
-# Insert key-value pairs - O(1) average
-phone_book["Alice"] = "555-0101"
-phone_book["Bob"] = "555-0102"
-phone_book["Charlie"] = "555-0103"
-print("Phone book:", phone_book)
+    def _hash(self, key):
+        return hash(key) % self.capacity
 
-# Lookup by key - O(1) average
-print("Alice's number:", phone_book["Alice"])
+    def _resize(self):
+        old_buckets = self.buckets
+        self.capacity *= 2
+        self.buckets = [[] for _ in range(self.capacity)]
+        self.size = 0
+        for bucket in old_buckets:
+            for key, value in bucket:
+                self.put(key, value)
 
-# Check if key exists - O(1) average
-print("Has 'Bob'?", "Bob" in phone_book)
-print("Has 'Dave'?", "Dave" in phone_book)
+    def put(self, key, value):
+        if self.size / self.capacity >= self.load_factor_threshold:
+            self._resize()
 
-# Delete a key - O(1) average
-del phone_book["Bob"]
-print("After deleting Bob:", phone_book)
+        idx = self._hash(key)
+        bucket = self.buckets[idx]
 
-# Count character frequency (common pattern)
-text = "hello world"
-freq = {}
-for ch in text:
-    freq[ch] = freq.get(ch, 0) + 1
-print("Character frequencies:", freq)`}
-  title="Hash Tables Example"
+        # Update if key exists
+        for i, (k, v) in enumerate(bucket):
+            if k == key:
+                bucket[i] = (key, value)
+                return
+
+        # Insert new key
+        bucket.append((key, value))
+        self.size += 1
+
+    def get(self, key, default=None):
+        idx = self._hash(key)
+        for k, v in self.buckets[idx]:
+            if k == key:
+                return v
+        return default
+
+    def delete(self, key):
+        idx = self._hash(key)
+        bucket = self.buckets[idx]
+        for i, (k, v) in enumerate(bucket):
+            if k == key:
+                bucket.pop(i)
+                self.size -= 1
+                return True
+        return False
+
+    def __repr__(self):
+        items = []
+        for bucket in self.buckets:
+            items.extend(bucket)
+        return f"HashTable({dict(items)})"
+
+# Demo
+ht = HashTable()
+data = [("apple", 3), ("banana", 5), ("cherry", 2),
+        ("date", 8), ("elderberry", 1), ("fig", 4)]
+
+for key, val in data:
+    ht.put(key, val)
+    print(f"put('{key}', {val}) -> size={ht.size}, capacity={ht.capacity}")
+
+print(f"\\nget('cherry'): {ht.get('cherry')}")
+print(f"get('grape'):  {ht.get('grape', 'NOT FOUND')}")
+
+ht.delete("banana")
+print(f"\\nAfter deleting 'banana': {ht}")
+print(f"get('banana'): {ht.get('banana', 'NOT FOUND')}")`}
+  title="Hash Table with Separate Chaining"
 />
 
 ## Complexity
 
-| Operation | Average | Worst Case |
-|-----------|---------|------------|
-| Insert    | O(1)    | O(n)       |
-| Lookup    | O(1)    | O(n)       |
-| Delete    | O(1)    | O(n)       |
-| Space     | -       | O(n)       |
+| Operation | Average | Worst Case | Notes |
+|-----------|---------|------------|-------|
+| Insert | $O(1)$ | $O(n)$ | Worst case when all keys collide |
+| Search | $O(1)$ | $O(n)$ | Average assumes good hash function |
+| Delete | $O(1)$ | $O(n)$ | Same reasoning as search |
+| Space | --- | $O(n)$ | Proportional to number of entries |
+
+The $O(1)$ average relies on two assumptions: (1) a good hash function that distributes keys uniformly, and (2) a reasonable load factor maintained through rehashing.
+
+## Classic Problem: Two Sum
+
+Given an array of integers and a target, find two numbers that add up to the target. Return their indices.
+
+**Brute force** checks all pairs in $O(n^2)$. A hash map reduces this to $O(n)$: for each number, check whether `target - num` has already been seen.
+
+<CodePlayground
+  code={`def two_sum(nums, target):
+    seen = {}  # value -> index
+    for i, num in enumerate(nums):
+        complement = target - num
+        if complement in seen:
+            return [seen[complement], i]
+        seen[num] = i
+    return []
+
+# Examples
+print(two_sum([2, 7, 11, 15], 9))   # [0, 1]
+print(two_sum([3, 2, 4], 6))        # [1, 2]
+print(two_sum([3, 3], 6))           # [0, 1]`}
+  title="Two Sum with Hash Map"
+/>
+
+## Classic Problem: Frequency Counting
+
+Counting occurrences is the most common hash map usage pattern.
+
+<CodePlayground
+  code={`from collections import Counter
+
+def top_k_frequent(nums, k):
+    """Return the k most frequent elements."""
+    count = Counter(nums)
+    # most_common returns (element, count) pairs sorted by frequency
+    return [elem for elem, _ in count.most_common(k)]
+
+nums = [1, 1, 1, 2, 2, 3, 3, 3, 3, 4]
+print(f"Array: {nums}")
+print(f"Top 2 frequent: {top_k_frequent(nums, 2)}")
+
+# Manual counting without Counter
+text = "abracadabra"
+freq = {}
+for ch in text:
+    freq[ch] = freq.get(ch, 0) + 1
+print(f"\\nFrequencies in '{text}':")
+for ch, count in sorted(freq.items(), key=lambda x: -x[1]):
+    print(f"  '{ch}': {count}")`}
+  title="Frequency Counting"
+/>
+
+## Classic Problem: Group Anagrams
+
+Group strings that are anagrams of each other. Two strings are anagrams if they contain the same characters in the same frequencies.
+
+**Key insight:** Sort each string to get a canonical form. Use it as the hash map key.
+
+Time: $O(n \cdot k \log k)$ where $n$ is the number of strings and $k$ is the maximum string length.
+
+<CodePlayground
+  code={`from collections import defaultdict
+
+def group_anagrams(strs):
+    groups = defaultdict(list)
+    for s in strs:
+        key = ''.join(sorted(s))
+        groups[key].append(s)
+    return list(groups.values())
+
+words = ["eat", "tea", "tan", "ate", "nat", "bat"]
+result = group_anagrams(words)
+print(f"Input: {words}")
+print(f"Groups:")
+for group in result:
+    print(f"  {group}")`}
+  title="Group Anagrams"
+/>
+
+## When to Use a Hash Table
+
+| Use case | Why hash table? |
+|----------|----------------|
+| Fast lookups by key | $O(1)$ average |
+| Counting frequencies | Natural key-value mapping |
+| Detecting duplicates | Check membership in $O(1)$ |
+| Caching / memoization | Store computed results |
+| Grouping related items | Group by a computed key |
+| Two-pointer complement | Store seen values for instant lookup |
+
+## Hash Table vs Other Structures
+
+| | Hash Table | Sorted Array | BST |
+|---|-----------|-------------|-----|
+| Search | $O(1)$ avg | $O(\log n)$ | $O(\log n)$ |
+| Insert | $O(1)$ avg | $O(n)$ | $O(\log n)$ |
+| Ordered iteration | No | Yes | Yes |
+| Min/Max | $O(n)$ | $O(1)$ | $O(\log n)$ |
+
+Hash tables trade ordering for speed. If you need sorted data or range queries, consider a balanced BST or sorted array instead.
 
 ---
 
-*Full content coming soon.*
+## Key takeaways
+
+1. Hash tables provide $O(1)$ average-case insert, search, and delete
+2. **Collision handling** uses either chaining (linked lists per bucket) or open addressing (probing)
+3. The **load factor** must be managed --- rehashing doubles capacity when the table gets too full
+4. Python's `dict` is a highly optimized hash table with open addressing
+5. The **Two Sum** pattern (complement lookup) is the most common hash map interview technique
+6. Hash tables are unordered --- use a BST or sorted structure when ordering matters
+
+---
+
+**Next:** [Hash Map Patterns](/docs/hash-tables/hash-map-patterns) --- master the recurring patterns that appear in hash map problems.

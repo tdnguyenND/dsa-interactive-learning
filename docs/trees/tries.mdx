@@ -1,0 +1,126 @@
+---
+sidebar_position: 4
+title: "Tries"
+---
+
+import CodePlayground from '@site/src/components/CodePlayground';
+
+# Tries (Prefix Trees)
+
+A trie is a tree-like data structure for storing strings where each node represents a character. It enables $O(m)$ lookup, insert, and prefix search, where $m$ is the string length.
+
+## Implementation
+
+<CodePlayground
+  code={`class TrieNode:
+    def __init__(self):
+        self.children = {}
+        self.is_end = False
+
+class Trie:
+    def __init__(self):
+        self.root = TrieNode()
+
+    def insert(self, word):
+        node = self.root
+        for char in word:
+            if char not in node.children:
+                node.children[char] = TrieNode()
+            node = node.children[char]
+        node.is_end = True
+
+    def search(self, word):
+        node = self._find_node(word)
+        return node is not None and node.is_end
+
+    def starts_with(self, prefix):
+        return self._find_node(prefix) is not None
+
+    def _find_node(self, prefix):
+        node = self.root
+        for char in prefix:
+            if char not in node.children:
+                return None
+            node = node.children[char]
+        return node
+
+trie = Trie()
+for word in ["apple", "app", "application", "bat", "ball"]:
+    trie.insert(word)
+
+print(f"search('apple'): {trie.search('apple')}")       # True
+print(f"search('app'): {trie.search('app')}")           # True
+print(f"search('appl'): {trie.search('appl')}")         # False
+print(f"starts_with('app'): {trie.starts_with('app')}") # True
+print(f"starts_with('ban'): {trie.starts_with('ban')}") # False`}
+  title="Trie Implementation"
+/>
+
+## Autocomplete
+
+<CodePlayground
+  code={`class AutocompleteTrie:
+    def __init__(self):
+        self.root = {}
+
+    def insert(self, word):
+        node = self.root
+        for ch in word:
+            node = node.setdefault(ch, {})
+        node['$'] = True
+
+    def autocomplete(self, prefix, limit=5):
+        node = self.root
+        for ch in prefix:
+            if ch not in node:
+                return []
+            node = node[ch]
+
+        results = []
+        self._dfs(node, prefix, results, limit)
+        return results
+
+    def _dfs(self, node, path, results, limit):
+        if len(results) >= limit:
+            return
+        if '$' in node:
+            results.append(path)
+        for ch in sorted(node):
+            if ch != '$':
+                self._dfs(node[ch], path + ch, results, limit)
+
+trie = AutocompleteTrie()
+words = ["apple", "app", "application", "apply", "apt", "bat", "ball"]
+for w in words:
+    trie.insert(w)
+
+print(f"'app' -> {trie.autocomplete('app')}")
+print(f"'ba' -> {trie.autocomplete('ba')}")
+print(f"'z' -> {trie.autocomplete('z')}")`}
+  title="Autocomplete with Trie"
+/>
+
+## Complexity
+
+| Operation | Time | Space |
+|-----------|------|-------|
+| Insert | $O(m)$ | $O(m)$ per word |
+| Search | $O(m)$ | — |
+| Prefix search | $O(m)$ | — |
+| Total space | — | $O(N \times m)$ worst case |
+
+Where $m$ = word length, $N$ = number of words.
+
+---
+
+## Key takeaways
+
+1. Trie enables $O(m)$ string operations (independent of number of stored strings)
+2. Each node stores children as a dict/array of next characters
+3. `is_end` flag marks complete words vs. prefixes
+4. Applications: autocomplete, spell check, IP routing, word search
+5. Space can be large — consider compressed tries for optimization
+
+---
+
+**Next:** [Graph Representations](/docs/graphs/graph-representations)

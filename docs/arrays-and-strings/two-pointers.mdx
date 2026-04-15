@@ -1,0 +1,212 @@
+---
+sidebar_position: 3
+title: "Two Pointers"
+---
+
+import CodePlayground from '@site/src/components/CodePlayground';
+
+# Two Pointers
+
+The two-pointer technique uses two indices that move through a data structure (usually an array or string) to solve problems in $O(n)$ time that would otherwise require $O(n^2)$ with brute force. The key insight is that by maintaining a constraint between the pointers, you can eliminate large portions of the search space at each step.
+
+There are two main variants:
+
+- **Opposite-direction pointers** -- one starts at the beginning, the other at the end, and they move toward each other
+- **Same-direction pointers** -- both start near the beginning and move in the same direction at different speeds
+
+## Opposite-Direction Pointers
+
+### Two Sum (Sorted Array)
+
+Given a **sorted** array, find two numbers that add up to a target. Because the array is sorted, if the current sum is too small we advance the left pointer (to increase the sum), and if too large we retreat the right pointer (to decrease it). Each pointer moves at most $n$ times, so the total work is $O(n)$.
+
+<CodePlayground code={`def two_sum_sorted(nums, target):
+    """Find indices of two numbers that add to target in a sorted array."""
+    left, right = 0, len(nums) - 1
+    while left < right:
+        current_sum = nums[left] + nums[right]
+        if current_sum == target:
+            return [left, right]
+        elif current_sum < target:
+            left += 1      # need a larger sum
+        else:
+            right -= 1     # need a smaller sum
+    return []
+
+nums = [2, 7, 11, 15]
+print(f"Array: {nums}")
+print(f"Target 9:  indices {two_sum_sorted(nums, 9)}")
+print(f"Target 18: indices {two_sum_sorted(nums, 18)}")
+print(f"Target 22: indices {two_sum_sorted(nums, 22)}")
+print(f"Target 50: indices {two_sum_sorted(nums, 50)}")`} title="Two Sum -- Sorted Array" />
+
+### Container With Most Water
+
+Given an array of heights, find two lines that together with the x-axis form a container holding the most water. The area between indices $i$ and $j$ is $\min(h[i], h[j]) \times (j - i)$. Start with the widest container (pointers at both ends) and move the pointer at the shorter line inward -- moving the taller one can never increase the area since the height is bounded by the shorter side.
+
+<CodePlayground code={`def max_area(height):
+    """Find the container that holds the most water."""
+    left, right = 0, len(height) - 1
+    best = 0
+    while left < right:
+        w = right - left
+        h = min(height[left], height[right])
+        best = max(best, w * h)
+        # Move the shorter side inward
+        if height[left] < height[right]:
+            left += 1
+        else:
+            right -= 1
+    return best
+
+heights = [1, 8, 6, 2, 5, 4, 8, 3, 7]
+print(f"Heights: {heights}")
+print(f"Max water: {max_area(heights)}")
+# Between index 1 (h=8) and index 8 (h=7): min(8,7) * 7 = 49`} title="Container With Most Water" />
+
+### 3Sum
+
+Find all unique triplets in the array that sum to zero. Sort the array first, then fix one element and use two pointers on the remaining portion. Careful deduplication avoids repeated triplets.
+
+<CodePlayground code={`def three_sum(nums):
+    """Find all unique triplets that sum to zero."""
+    nums.sort()
+    result = []
+    n = len(nums)
+
+    for i in range(n - 2):
+        # Skip duplicate first elements
+        if i > 0 and nums[i] == nums[i - 1]:
+            continue
+        # Early termination: smallest triple > 0
+        if nums[i] > 0:
+            break
+
+        left, right = i + 1, n - 1
+        while left < right:
+            total = nums[i] + nums[left] + nums[right]
+            if total == 0:
+                result.append([nums[i], nums[left], nums[right]])
+                # Skip duplicates
+                while left < right and nums[left] == nums[left + 1]:
+                    left += 1
+                while left < right and nums[right] == nums[right - 1]:
+                    right -= 1
+                left += 1
+                right -= 1
+            elif total < 0:
+                left += 1
+            else:
+                right -= 1
+
+    return result
+
+nums = [-1, 0, 1, 2, -1, -4]
+print(f"Array: {nums}")
+print(f"Triplets summing to 0: {three_sum(nums)}")
+
+nums2 = [-2, 0, 0, 2, 2]
+print(f"\\nArray: {nums2}")
+print(f"Triplets summing to 0: {three_sum(nums2)}")`} title="3Sum" />
+
+## Same-Direction Pointers
+
+In this variant both pointers move left-to-right. A "slow" pointer tracks where the next valid element should go, while a "fast" pointer scans ahead.
+
+### Remove Duplicates from Sorted Array
+
+Given a sorted array, remove duplicates **in-place** so each element appears at most once. Return the new length. The slow pointer marks the boundary of the deduplicated portion.
+
+<CodePlayground code={`def remove_duplicates(nums):
+    """Remove duplicates in-place, return new length."""
+    if not nums:
+        return 0
+    slow = 0
+    for fast in range(1, len(nums)):
+        if nums[fast] != nums[slow]:
+            slow += 1
+            nums[slow] = nums[fast]
+    return slow + 1
+
+nums = [0, 0, 1, 1, 1, 2, 2, 3, 3, 4]
+print(f"Original: {nums}")
+k = remove_duplicates(nums)
+print(f"After dedup: {nums[:k]}  (length {k})")`} title="Remove Duplicates from Sorted Array" />
+
+### Move Zeroes
+
+Move all zeroes to the end while maintaining the relative order of non-zero elements. The slow pointer tracks where the next non-zero should be placed.
+
+<CodePlayground code={`def move_zeroes(nums):
+    """Move all 0s to the end, keeping order of non-zero elements."""
+    slow = 0  # position for next non-zero
+    for fast in range(len(nums)):
+        if nums[fast] != 0:
+            nums[slow], nums[fast] = nums[fast], nums[slow]
+            slow += 1
+    return nums
+
+nums = [0, 1, 0, 3, 12]
+print(f"Before: {nums}")
+print(f"After:  {move_zeroes(nums)}")
+
+nums2 = [0, 0, 1]
+print(f"\\nBefore: {nums2}")
+print(f"After:  {move_zeroes(nums2)}")`} title="Move Zeroes" />
+
+### Palindrome Check
+
+A classic opposite-direction pattern: compare characters from both ends moving inward, skipping non-alphanumeric characters.
+
+<CodePlayground code={`def is_palindrome(s):
+    """Check if string is a palindrome, ignoring non-alphanumeric chars."""
+    left, right = 0, len(s) - 1
+    while left < right:
+        while left < right and not s[left].isalnum():
+            left += 1
+        while left < right and not s[right].isalnum():
+            right -= 1
+        if s[left].lower() != s[right].lower():
+            return False
+        left += 1
+        right -= 1
+    return True
+
+tests = ["A man, a plan, a canal: Panama", "race a car", " ", "ab_a"]
+for t in tests:
+    print(f'"{t}" -> {is_palindrome(t)}')`} title="Valid Palindrome" />
+
+## When to Use Two Pointers
+
+The technique applies when:
+
+1. The input is **sorted** (or can be sorted without losing information)
+2. You need to find a **pair or subarray** satisfying some condition
+3. A brute-force approach would check all pairs ($O(n^2)$) but sorted order lets you prune
+4. You need **in-place** rearrangement (same-direction variant)
+
+## Complexity Summary
+
+| Problem | Brute Force | Two Pointers | Space |
+|---------|------------|-------------|-------|
+| Two Sum (sorted) | $O(n^2)$ | $O(n)$ | $O(1)$ |
+| Container With Most Water | $O(n^2)$ | $O(n)$ | $O(1)$ |
+| 3Sum | $O(n^3)$ | $O(n^2)$ | $O(1)$ extra |
+| Remove Duplicates | $O(n)$ extra space | $O(n)$ | $O(1)$ |
+| Move Zeroes | $O(n)$ extra space | $O(n)$ | $O(1)$ |
+| Valid Palindrome | $O(n)$ | $O(n)$ | $O(1)$ |
+
+## Common Pitfalls
+
+- **Forgetting to sort** before applying opposite-direction pointers -- the technique only works on sorted data (except for problems like Container With Most Water where the structure is inherent)
+- **Duplicate handling in 3Sum** -- skipping duplicates incorrectly leads to missed or repeated triplets
+- **Off-by-one errors** -- be precise about `left < right` vs `left <= right`
+- **Infinite loops** -- ensure at least one pointer advances every iteration
+
+## Key Takeaways
+
+- Two pointers reduce $O(n^2)$ pair searches to $O(n)$ by exploiting sorted order or structural constraints
+- **Opposite-direction** pointers converge from both ends -- ideal for pair-sum problems and palindromes
+- **Same-direction** pointers (slow/fast) rearrange arrays in-place -- ideal for partitioning and deduplication
+- The pattern extends naturally to k-sum problems by fixing $k - 2$ elements and using two pointers on the rest
+- Always consider whether sorting the input first enables a two-pointer solution

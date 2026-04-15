@@ -1,63 +1,260 @@
 ---
 sidebar_position: 1
 title: "Backtracking"
+slug: /backtracking/introduction
 ---
 
 import CodePlayground from '@site/src/components/CodePlayground';
 
 # Backtracking
 
-Backtracking is an algorithmic technique that builds candidates for solutions incrementally and abandons a candidate as soon as it determines the candidate cannot lead to a valid solution. This page introduces backtracking through the classic N-Queens problem.
+Backtracking explores all possible solutions by building candidates incrementally and **abandoning** (backtracking) a candidate as soon as it cannot lead to a valid solution. It's a systematic way to search through a decision tree with pruning.
 
-## Overview
+## The template
 
-Backtracking systematically explores all possible configurations by making choices and undoing them (backtracking) when they lead to dead ends. It is essentially a depth-first search of the solution space with pruning. Common applications include constraint satisfaction problems, combinatorial search, and puzzle solving.
+```python
+def backtrack(state, choices):
+    if is_solution(state):
+        result.append(state.copy())
+        return
 
-## Implementation
+    for choice in choices:
+        if is_valid(choice, state):   # prune
+            make_choice(choice, state)
+            backtrack(state, next_choices)
+            undo_choice(choice, state)  # backtrack
+```
+
+## Subsets
 
 <CodePlayground
-  code={`# N-Queens Problem using Backtracking
-def solve_n_queens(n):
-    solutions = []
+  code={`def subsets(nums):
+    """Generate all subsets (power set)"""
+    result = []
 
-    def is_safe(board, row, col):
-        for r in range(row):
-            if board[r] == col:
-                return False
-            if abs(board[r] - col) == abs(r - row):
-                return False
-        return True
+    def backtrack(start, current):
+        result.append(current[:])  # add copy
 
-    def backtrack(board, row):
-        if row == n:
-            solutions.append(board[:])
-            return
-        for col in range(n):
-            if is_safe(board, row, col):
-                board[row] = col
-                backtrack(board, row + 1)
-                board[row] = -1  # undo choice
+        for i in range(start, len(nums)):
+            current.append(nums[i])
+            backtrack(i + 1, current)
+            current.pop()
 
-    backtrack([-1] * n, 0)
-    return solutions
+    backtrack(0, [])
+    return result
 
-n = 4
-solutions = solve_n_queens(n)
-print(f"Number of solutions for {n}-Queens: {len(solutions)}")
-for i, sol in enumerate(solutions):
-    print(f"\\nSolution {i + 1}:")
-    for row in range(n):
-        line = "." * sol[row] + "Q" + "." * (n - sol[row] - 1)
-        print(f"  {line}")`}
-  title="Backtracking Example"
+print("Subsets of [1,2,3]:")
+for s in subsets([1, 2, 3]):
+    print(f"  {s}")`}
+  title="Subsets"
 />
 
-## Complexity
+## Permutations
 
-| Problem    | Time       | Space |
-|------------|------------|-------|
-| N-Queens   | O(n!)      | O(n)  |
+<CodePlayground
+  code={`def permutations(nums):
+    """Generate all permutations"""
+    result = []
+
+    def backtrack(current, remaining):
+        if not remaining:
+            result.append(current[:])
+            return
+
+        for i in range(len(remaining)):
+            current.append(remaining[i])
+            backtrack(current, remaining[:i] + remaining[i+1:])
+            current.pop()
+
+    backtrack([], nums)
+    return result
+
+print("Permutations of [1,2,3]:")
+for p in permutations([1, 2, 3]):
+    print(f"  {p}")`}
+  title="Permutations"
+/>
+
+## Combinations
+
+<CodePlayground
+  code={`def combine(n, k):
+    """Generate all combinations of k numbers from 1..n"""
+    result = []
+
+    def backtrack(start, current):
+        if len(current) == k:
+            result.append(current[:])
+            return
+
+        # Prune: not enough numbers left
+        for i in range(start, n + 1 - (k - len(current)) + 1):
+            current.append(i)
+            backtrack(i + 1, current)
+            current.pop()
+
+    backtrack(1, [])
+    return result
+
+print(f"C(4,2): {combine(4, 2)}")
+print(f"C(5,3): {combine(5, 3)}")`}
+  title="Combinations"
+/>
+
+## N-Queens
+
+Place $n$ queens on an $n \times n$ board so no two queens attack each other.
+
+<CodePlayground
+  code={`def solve_n_queens(n):
+    result = []
+    cols = set()
+    diag1 = set()  # row - col
+    diag2 = set()  # row + col
+
+    def backtrack(row, board):
+        if row == n:
+            result.append(["".join(r) for r in board])
+            return
+
+        for col in range(n):
+            if col in cols or (row-col) in diag1 or (row+col) in diag2:
+                continue
+
+            cols.add(col)
+            diag1.add(row - col)
+            diag2.add(row + col)
+            board[row][col] = 'Q'
+
+            backtrack(row + 1, board)
+
+            board[row][col] = '.'
+            cols.remove(col)
+            diag1.remove(row - col)
+            diag2.remove(row + col)
+
+    board = [['.' for _ in range(n)] for _ in range(n)]
+    backtrack(0, board)
+    return result
+
+solutions = solve_n_queens(4)
+print(f"{len(solutions)} solutions for 4-Queens:")
+for i, sol in enumerate(solutions):
+    print(f"Solution {i+1}:")
+    for row in sol:
+        print(f"  {row}")
+    print()`}
+  title="N-Queens"
+/>
+
+## Sudoku solver
+
+<CodePlayground
+  code={`def solve_sudoku(board):
+    def is_valid(row, col, num):
+        for i in range(9):
+            if board[row][i] == num or board[i][col] == num:
+                return False
+        r, c = 3 * (row // 3), 3 * (col // 3)
+        for i in range(r, r + 3):
+            for j in range(c, c + 3):
+                if board[i][j] == num:
+                    return False
+        return True
+
+    def backtrack():
+        for i in range(9):
+            for j in range(9):
+                if board[i][j] == 0:
+                    for num in range(1, 10):
+                        if is_valid(i, j, num):
+                            board[i][j] = num
+                            if backtrack():
+                                return True
+                            board[i][j] = 0
+                    return False
+        return True
+
+    backtrack()
+
+board = [
+    [5,3,0, 0,7,0, 0,0,0],
+    [6,0,0, 1,9,5, 0,0,0],
+    [0,9,8, 0,0,0, 0,6,0],
+    [8,0,0, 0,6,0, 0,0,3],
+    [4,0,0, 8,0,3, 0,0,1],
+    [7,0,0, 0,2,0, 0,0,6],
+    [0,6,0, 0,0,0, 2,8,0],
+    [0,0,0, 4,1,9, 0,0,5],
+    [0,0,0, 0,8,0, 0,7,9],
+]
+solve_sudoku(board)
+print("Solved Sudoku:")
+for row in board:
+    print(row)`}
+  title="Sudoku Solver"
+/>
+
+## Word search
+
+<CodePlayground
+  code={`def word_search(board, word):
+    rows, cols = len(board), len(board[0])
+
+    def backtrack(r, c, idx):
+        if idx == len(word):
+            return True
+        if r < 0 or r >= rows or c < 0 or c >= cols:
+            return False
+        if board[r][c] != word[idx]:
+            return False
+
+        temp = board[r][c]
+        board[r][c] = '#'  # mark visited
+
+        for dr, dc in [(0,1),(0,-1),(1,0),(-1,0)]:
+            if backtrack(r+dr, c+dc, idx+1):
+                return True
+
+        board[r][c] = temp  # unmark
+        return False
+
+    for r in range(rows):
+        for c in range(cols):
+            if backtrack(r, c, 0):
+                return True
+    return False
+
+board = [
+    ['A','B','C','E'],
+    ['S','F','C','S'],
+    ['A','D','E','E']
+]
+print(word_search(board, "ABCCED"))   # True
+print(word_search(board, "SEE"))      # True
+print(word_search(board, "ABCB"))     # False`}
+  title="Word Search"
+/>
+
+## Complexity of backtracking
+
+Backtracking explores the decision tree, so complexity depends on the branching factor and depth:
+
+| Problem | Time | Space |
+|---------|------|-------|
+| Subsets | $O(2^n)$ | $O(n)$ |
+| Permutations | $O(n!)$ | $O(n)$ |
+| N-Queens | $O(n!)$ | $O(n)$ |
+| Sudoku | $O(9^{empty})$ | $O(1)$ |
+
+Pruning reduces the actual number of nodes explored, often dramatically.
 
 ---
 
-*Full content coming soon.*
+## Key takeaways
+
+1. Backtracking = DFS on the decision tree + **pruning** invalid branches
+2. Template: choose → explore → unchoose (undo)
+3. Key difference from brute force: pruning skips entire subtrees
+4. Common patterns: subsets, permutations, combinations, constraint satisfaction
+5. Always think about what to **prune** — it determines practical performance

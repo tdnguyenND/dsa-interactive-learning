@@ -1,0 +1,410 @@
+---
+sidebar_position: 3
+title: "DP Patterns"
+---
+
+import CodePlayground from '@site/src/components/CodePlayground';
+
+# DP Patterns
+
+Most dynamic programming problems fall into recognizable patterns. Learning to identify which pattern applies is the hardest part --- once you know the pattern, the state definition and recurrence follow naturally.
+
+## Pattern 1: Linear (1D) DP
+
+**When to use**: The decision at step $i$ depends on previous steps. The state is a single index.
+
+**Template**: $dp[i]$ = answer considering elements $0..i$.
+
+### Example: House Robber
+
+You cannot rob two adjacent houses. Maximize the total amount.
+
+<CodePlayground
+  code={`def rob(nums):
+    """House Robber — classic 1D DP.
+    dp[i] = max money robbing from houses 0..i
+    Recurrence: dp[i] = max(dp[i-1], dp[i-2] + nums[i])"""
+    if not nums:
+        return 0
+    if len(nums) == 1:
+        return nums[0]
+
+    prev2 = 0         # dp[i-2]
+    prev1 = nums[0]   # dp[i-1]
+
+    for i in range(1, len(nums)):
+        curr = max(prev1, prev2 + nums[i])
+        prev2, prev1 = prev1, curr
+
+    return prev1
+
+print(rob([2, 7, 9, 3, 1]))   # 12 (rob houses 0, 2, 4)
+print(rob([1, 2, 3, 1]))      # 4  (rob houses 0, 2)
+print(rob([2, 1, 1, 2]))      # 4  (rob houses 0, 3)`}
+  title="House Robber (1D DP)"
+/>
+
+### Example: Coin Change
+
+Find the minimum number of coins to make amount $a$.
+
+<CodePlayground
+  code={`def coin_change(coins, amount):
+    """Minimum coins to make amount.
+    dp[a] = min coins to make amount a
+    Recurrence: dp[a] = 1 + min(dp[a - c] for c in coins)"""
+    dp = [float('inf')] * (amount + 1)
+    dp[0] = 0
+
+    for a in range(1, amount + 1):
+        for c in coins:
+            if c <= a and dp[a - c] != float('inf'):
+                dp[a] = min(dp[a], dp[a - c] + 1)
+
+    return dp[amount] if dp[amount] != float('inf') else -1
+
+print(coin_change([1, 5, 10, 25], 30))  # 2 (25 + 5)
+print(coin_change([2], 3))               # -1
+print(coin_change([1, 3, 4], 6))         # 2 (3 + 3)`}
+  title="Coin Change (1D DP)"
+/>
+
+## Pattern 2: 2D Grid DP
+
+**When to use**: Problem is on a 2D grid; you move in restricted directions (e.g., right/down).
+
+**Template**: $dp[i][j]$ = answer at cell $(i, j)$.
+
+### Example: Minimum Path Sum
+
+<CodePlayground
+  code={`def min_path_sum(grid):
+    """Minimum cost path from top-left to bottom-right.
+    dp[i][j] = min cost to reach (i, j)
+    Recurrence: dp[i][j] = grid[i][j] + min(dp[i-1][j], dp[i][j-1])"""
+    m, n = len(grid), len(grid[0])
+    dp = [0] * n
+
+    # First row: can only come from the left
+    dp[0] = grid[0][0]
+    for j in range(1, n):
+        dp[j] = dp[j - 1] + grid[0][j]
+
+    for i in range(1, m):
+        dp[0] += grid[i][0]  # first column: can only come from above
+        for j in range(1, n):
+            dp[j] = grid[i][j] + min(dp[j], dp[j - 1])
+
+    return dp[n - 1]
+
+grid = [
+    [1, 3, 1],
+    [1, 5, 1],
+    [4, 2, 1]
+]
+print(f"Min path sum: {min_path_sum(grid)}")  # 7 (1->3->1->1->1)`}
+  title="Minimum Path Sum (Grid DP)"
+/>
+
+### Example: Maximal Square
+
+<CodePlayground
+  code={`def maximal_square(matrix):
+    """Largest square of 1s in a binary matrix.
+    dp[i][j] = side length of largest square with
+               bottom-right corner at (i, j)
+    Recurrence: dp[i][j] = 1 + min(dp[i-1][j], dp[i][j-1], dp[i-1][j-1])"""
+    if not matrix:
+        return 0
+    m, n = len(matrix), len(matrix[0])
+    dp = [0] * n
+    max_side = 0
+    prev = 0  # dp[i-1][j-1]
+
+    for i in range(m):
+        for j in range(n):
+            old = dp[j]  # save before overwrite (becomes prev for j+1)
+            if i == 0 or j == 0:
+                dp[j] = matrix[i][j]
+            elif matrix[i][j] == 1:
+                dp[j] = 1 + min(dp[j], dp[j - 1], prev)
+            else:
+                dp[j] = 0
+            prev = old
+            max_side = max(max_side, dp[j])
+
+    return max_side * max_side
+
+matrix = [
+    [1, 0, 1, 0, 0],
+    [1, 0, 1, 1, 1],
+    [1, 1, 1, 1, 1],
+    [1, 0, 0, 1, 0]
+]
+print(f"Maximal square area: {maximal_square(matrix)}")  # 4`}
+  title="Maximal Square (Grid DP)"
+/>
+
+## Pattern 3: Knapsack Variants
+
+**When to use**: Choose items with constraints (weight, count). Three common variants:
+
+| Variant | Item usage | Iteration order |
+|---------|-----------|----------------|
+| **0/1 Knapsack** | Each item at most once | Capacity in **reverse** |
+| **Unbounded Knapsack** | Each item unlimited times | Capacity **forward** |
+| **Bounded Knapsack** | Each item $k_i$ times | Binary decomposition |
+
+### Example: Unbounded Knapsack (Coin Change II)
+
+<CodePlayground
+  code={`def coin_change_ways(coins, amount):
+    """Count ways to make amount using unlimited coins.
+    This is the unbounded knapsack variant.
+    dp[a] = number of ways to make amount a"""
+    dp = [0] * (amount + 1)
+    dp[0] = 1  # one way to make 0: use no coins
+
+    for coin in coins:           # iterate coins in outer loop
+        for a in range(coin, amount + 1):  # forward for unbounded
+            dp[a] += dp[a - coin]
+
+    return dp[amount]
+
+print(coin_change_ways([1, 2, 5], 5))   # 4 ways
+print(coin_change_ways([1, 2, 3], 4))   # 4 ways
+print(coin_change_ways([2], 3))          # 0 ways`}
+  title="Unbounded Knapsack (Coin Change II)"
+/>
+
+### Example: Partition Equal Subset Sum (0/1 Knapsack)
+
+<CodePlayground
+  code={`def can_partition(nums):
+    """Can we partition nums into two subsets with equal sum?
+    Reduces to 0/1 knapsack: can we find a subset summing to total/2?"""
+    total = sum(nums)
+    if total % 2 != 0:
+        return False
+    target = total // 2
+    dp = [False] * (target + 1)
+    dp[0] = True
+
+    for num in nums:
+        for t in range(target, num - 1, -1):  # reverse for 0/1
+            dp[t] = dp[t] or dp[t - num]
+
+    return dp[target]
+
+print(can_partition([1, 5, 11, 5]))  # True  (1+5+5=11)
+print(can_partition([1, 2, 3, 5]))   # False`}
+  title="Partition Equal Subset Sum"
+/>
+
+## Pattern 4: String DP
+
+**When to use**: Two strings, comparing characters. State is usually two indices.
+
+**Template**: $dp[i][j]$ relates to $s[0..i-1]$ and $t[0..j-1]$.
+
+Common string DP problems: edit distance, LCS, longest palindromic subsequence, regex matching.
+
+### Example: Longest Palindromic Subsequence
+
+<CodePlayground
+  code={`def lps(s):
+    """Longest Palindromic Subsequence.
+    Observation: LPS(s) = LCS(s, reverse(s))
+    Or direct: dp[i][j] = LPS length of s[i..j]"""
+    n = len(s)
+    # dp[i] will represent dp[i][j] from the 2D table
+    dp = [0] * n
+
+    for i in range(n - 1, -1, -1):
+        new_dp = [0] * n
+        new_dp[i] = 1  # single character
+        for j in range(i + 1, n):
+            if s[i] == s[j]:
+                new_dp[j] = dp[j - 1] + 2
+            else:
+                new_dp[j] = max(dp[j], new_dp[j - 1])
+        dp = new_dp
+
+    return dp[n - 1] if n > 0 else 0
+
+print(lps("bbbab"))   # 4 ("bbbb")
+print(lps("cbbd"))    # 2 ("bb")
+print(lps("racecar")) # 7 (entire string is a palindrome)`}
+  title="Longest Palindromic Subsequence"
+/>
+
+## Pattern 5: Interval DP
+
+**When to use**: Problem asks about subarrays/substrings where you split or merge. The state is a range $[i, j]$.
+
+**Template**: $dp[i][j]$ = answer for the subproblem on range $i..j$. Try all split points $k$ between $i$ and $j$.
+
+### Example: Minimum Cost to Merge Stones / Matrix Chain Multiplication
+
+<CodePlayground
+  code={`def matrix_chain(dims):
+    """Minimum multiplications for matrix chain A1*A2*...*An.
+    dims[i-1] x dims[i] is the dimension of matrix Ai.
+    dp[i][j] = min cost to multiply matrices i..j
+    Recurrence: dp[i][j] = min over k of
+        dp[i][k] + dp[k+1][j] + dims[i-1]*dims[k]*dims[j]"""
+    n = len(dims) - 1  # number of matrices
+    dp = [[0] * n for _ in range(n)]
+
+    # length of chain
+    for length in range(2, n + 1):
+        for i in range(n - length + 1):
+            j = i + length - 1
+            dp[i][j] = float('inf')
+            for k in range(i, j):
+                cost = (dp[i][k] + dp[k + 1][j]
+                        + dims[i] * dims[k + 1] * dims[j + 1])
+                dp[i][j] = min(dp[i][j], cost)
+
+    return dp[0][n - 1]
+
+# Matrices: 10x30, 30x5, 5x60
+dims = [10, 30, 5, 60]
+print(f"Min multiplications: {matrix_chain(dims)}")  # 4500
+
+dims2 = [40, 20, 30, 10, 30]
+print(f"Min multiplications: {matrix_chain(dims2)}")  # 26000`}
+  title="Matrix Chain Multiplication (Interval DP)"
+/>
+
+### Example: Burst Balloons
+
+<CodePlayground
+  code={`def max_coins(nums):
+    """Burst balloons to maximize coins.
+    dp[i][j] = max coins from bursting all balloons
+               in the range (i, j) exclusive.
+    Key insight: think about which balloon is burst LAST."""
+    nums = [1] + nums + [1]  # add boundary balloons
+    n = len(nums)
+    dp = [[0] * n for _ in range(n)]
+
+    for length in range(2, n):  # gap between i and j
+        for i in range(n - length):
+            j = i + length
+            for k in range(i + 1, j):  # k is last to burst
+                coins = (nums[i] * nums[k] * nums[j]
+                         + dp[i][k] + dp[k][j])
+                dp[i][j] = max(dp[i][j], coins)
+
+    return dp[0][n - 1]
+
+print(max_coins([3, 1, 5, 8]))  # 167
+print(max_coins([1, 5]))        # 10`}
+  title="Burst Balloons (Interval DP)"
+/>
+
+## Pattern 6: State Machine DP
+
+**When to use**: Problem has multiple states you transition between. Common in stock trading problems.
+
+**Template**: Maintain separate DP values for each state. Transitions define the recurrence.
+
+### Example: Best Time to Buy and Sell Stock with Cooldown
+
+<CodePlayground
+  code={`def max_profit_cooldown(prices):
+    """Stock trading with 1-day cooldown after selling.
+    States:
+      held[i]  = max profit on day i if holding a stock
+      sold[i]  = max profit on day i if just sold
+      rest[i]  = max profit on day i if resting (no stock)
+    Transitions:
+      held[i] = max(held[i-1], rest[i-1] - prices[i])
+      sold[i] = held[i-1] + prices[i]
+      rest[i] = max(rest[i-1], sold[i-1])"""
+    if len(prices) < 2:
+        return 0
+
+    held = -prices[0]
+    sold = 0
+    rest = 0
+
+    for price in prices[1:]:
+        new_held = max(held, rest - price)
+        new_sold = held + price
+        new_rest = max(rest, sold)
+        held, sold, rest = new_held, new_sold, new_rest
+
+    return max(sold, rest)
+
+print(max_profit_cooldown([1, 2, 3, 0, 2]))  # 3 (buy@1,sell@3,buy@0,sell@2)
+print(max_profit_cooldown([1]))               # 0`}
+  title="Stock Trading with Cooldown (State Machine DP)"
+/>
+
+### Example: Best Time to Buy and Sell Stock with K Transactions
+
+<CodePlayground
+  code={`def max_profit_k(k, prices):
+    """At most k buy-sell transactions.
+    dp[t][i] = max profit using at most t transactions
+               considering prices[0..i]
+    Optimization: track max of (dp[t-1][j] - prices[j])
+    to avoid O(n^2) inner loop."""
+    n = len(prices)
+    if n < 2 or k == 0:
+        return 0
+
+    # If k >= n//2, unlimited transactions
+    if k >= n // 2:
+        return sum(max(0, prices[i+1] - prices[i])
+                   for i in range(n - 1))
+
+    dp = [[0] * n for _ in range(k + 1)]
+
+    for t in range(1, k + 1):
+        best_prev = -prices[0]  # max(dp[t-1][j] - prices[j])
+        for i in range(1, n):
+            dp[t][i] = max(dp[t][i - 1], prices[i] + best_prev)
+            best_prev = max(best_prev, dp[t - 1][i] - prices[i])
+
+    return dp[k][n - 1]
+
+print(max_profit_k(2, [3, 2, 6, 5, 0, 3]))  # 7 (buy@2,sell@6,buy@0,sell@3)
+print(max_profit_k(1, [2, 4, 1]))            # 2 (buy@2, sell@4)`}
+  title="Stock Trading with K Transactions"
+/>
+
+## How to identify the pattern
+
+| Clue in the problem | Pattern |
+|---------------------|---------|
+| Linear sequence, each step depends on previous | **1D DP** |
+| Grid traversal, restricted movement | **2D Grid DP** |
+| Choose items with weight/capacity constraints | **Knapsack** |
+| Two strings, compare/transform | **String DP** |
+| Optimal way to split/merge a range | **Interval DP** |
+| Multiple states to transition between | **State Machine DP** |
+
+## Complexity summary
+
+| Pattern | Typical Time | Typical Space |
+|---------|-------------|---------------|
+| **1D DP** | $O(n)$ or $O(n \cdot k)$ | $O(1)$ to $O(n)$ |
+| **2D Grid DP** | $O(m \cdot n)$ | $O(n)$ |
+| **Knapsack** | $O(n \cdot W)$ | $O(W)$ |
+| **String DP** | $O(m \cdot n)$ | $O(n)$ |
+| **Interval DP** | $O(n^3)$ | $O(n^2)$ |
+| **State Machine DP** | $O(n \cdot S)$ | $O(S)$ |
+
+## Key takeaways
+
+1. **Recognize the pattern first** --- the state definition and recurrence follow from the pattern.
+2. **1D DP** is the simplest: House Robber, Climbing Stairs, Coin Change.
+3. **Grid DP** extends 1D to two dimensions with restricted movement directions.
+4. **Knapsack variants** differ in whether items can be reused --- this determines the iteration order (forward vs. reverse).
+5. **String DP** almost always uses two indices for two strings and builds a 2D table.
+6. **Interval DP** tries all split points in a range --- expect $O(n^3)$ time.
+7. **State Machine DP** models problems with explicit states and transitions (e.g., holding stock, resting, sold).
+8. After identifying the pattern, always check if **space optimization** is possible (row-only dependency enables 1D array).

@@ -7,38 +7,110 @@ import CodePlayground from '@site/src/components/CodePlayground';
 
 # Binary Trees
 
-A binary tree is a hierarchical data structure where each node has at most two children, referred to as the left child and the right child. This page covers the TreeNode class, and three fundamental traversal methods: inorder, preorder, and postorder.
+A **binary tree** is a hierarchical data structure in which each node has at most two children, called the **left child** and the **right child**. Binary trees form the foundation for many critical structures -- BSTs, heaps, segment trees, expression trees -- so mastering them is essential.
 
-## Overview
+## Tree Terminology
 
-Binary trees form the foundation for many advanced data structures such as binary search trees, heaps, and segment trees. Understanding tree traversal is essential for solving a wide range of problems in computer science.
+Before diving into code, nail down the vocabulary:
 
-## Implementation
+| Term | Definition |
+|------|-----------|
+| **Root** | The topmost node (no parent) |
+| **Parent** | A node that has children |
+| **Child** | A node directly connected below another node |
+| **Leaf** | A node with no children |
+| **Edge** | A connection between parent and child |
+| **Depth** of a node | Number of edges from the root to that node (root has depth 0) |
+| **Height** of a node | Number of edges on the longest path from that node to a leaf |
+| **Height** of a tree | Height of the root node |
+| **Level** $k$ | All nodes at depth $k$ |
+| **Subtree** | A node together with all its descendants |
 
-<CodePlayground
-  code={`# Binary Tree with Traversals
-class TreeNode:
-    def __init__(self, val):
+## Mathematical Properties
+
+Binary trees obey several useful formulas:
+
+- Maximum nodes at level $k$: $2^k$
+- Maximum nodes in a tree of height $h$: $2^{h+1} - 1$
+- Minimum height of a tree with $n$ nodes: $\lfloor \log_2 n \rfloor$
+- For any binary tree with $n_0$ leaves and $n_2$ nodes with two children: $n_0 = n_2 + 1$
+
+## Types of Binary Trees
+
+| Type | Definition |
+|------|-----------|
+| **Full** | Every node has 0 or 2 children |
+| **Complete** | All levels filled except possibly the last, which is filled left to right |
+| **Perfect** | All internal nodes have 2 children and all leaves are at the same level |
+| **Balanced** | Height is $O(\log n)$ -- left and right subtree heights differ by at most 1 |
+| **Degenerate** | Every internal node has exactly 1 child (essentially a linked list) |
+
+A perfect tree of height $h$ has exactly $2^{h+1} - 1$ nodes. A degenerate tree of $n$ nodes has height $n - 1$.
+
+## The TreeNode Class
+
+<CodePlayground code={`class TreeNode:
+    """Basic binary tree node."""
+    def __init__(self, val=0, left=None, right=None):
         self.val = val
-        self.left = None
-        self.right = None
+        self.left = left
+        self.right = right
 
-def inorder(node):
-    if not node:
-        return []
-    return inorder(node.left) + [node.val] + inorder(node.right)
-
-def preorder(node):
-    if not node:
-        return []
-    return [node.val] + preorder(node.left) + preorder(node.right)
-
-def postorder(node):
-    if not node:
-        return []
-    return postorder(node.left) + postorder(node.right) + [node.val]
+    def __repr__(self):
+        return f"TreeNode({self.val})"
 
 # Build a sample tree:
+#        1
+#       / \\
+#      2   3
+#     / \\   \\
+#    4   5   6
+root = TreeNode(1)
+root.left = TreeNode(2)
+root.right = TreeNode(3)
+root.left.left = TreeNode(4)
+root.left.right = TreeNode(5)
+root.right.right = TreeNode(6)
+
+print("Root:", root)
+print("Left child:", root.left)
+print("Right child:", root.right)
+print("Leaf nodes:", root.left.left, root.left.right, root.right.right)`} title="TreeNode Class" />
+
+## Tree Traversals
+
+There are four standard traversals. Each visits every node exactly once in $O(n)$ time.
+
+### Depth-First Traversals (Recursive)
+
+- **Inorder (LNR)**: left subtree, node, right subtree -- gives sorted order for BSTs.
+- **Preorder (NLR)**: node, left subtree, right subtree -- useful for copying/serializing a tree.
+- **Postorder (LRN)**: left subtree, right subtree, node -- useful for deletion and expression evaluation.
+
+<CodePlayground code={`class TreeNode:
+    def __init__(self, val=0, left=None, right=None):
+        self.val = val
+        self.left = left
+        self.right = right
+
+def inorder(root):
+    """Left -> Node -> Right"""
+    if not root:
+        return []
+    return inorder(root.left) + [root.val] + inorder(root.right)
+
+def preorder(root):
+    """Node -> Left -> Right"""
+    if not root:
+        return []
+    return [root.val] + preorder(root.left) + preorder(root.right)
+
+def postorder(root):
+    """Left -> Right -> Node"""
+    if not root:
+        return []
+    return postorder(root.left) + postorder(root.right) + [root.val]
+
 #        1
 #       / \\
 #      2   3
@@ -50,21 +122,304 @@ root.right = TreeNode(3)
 root.left.left = TreeNode(4)
 root.left.right = TreeNode(5)
 
-print("Inorder:  ", inorder(root))
-print("Preorder: ", preorder(root))
-print("Postorder:", postorder(root))`}
-  title="Binary Trees Example"
-/>
+print("Inorder:  ", inorder(root))    # [4, 2, 5, 1, 3]
+print("Preorder: ", preorder(root))   # [1, 2, 4, 5, 3]
+print("Postorder:", postorder(root))  # [4, 5, 2, 3, 1]`} title="Recursive DFS Traversals" />
 
-## Complexity
+### Iterative Traversals
 
-| Operation       | Time   | Space  |
-|-----------------|--------|--------|
-| Traversal       | O(n)   | O(h)   |
-| Search          | O(n)   | O(h)   |
-| Insert          | O(n)   | O(h)   |
-| Height (h)      | O(log n) to O(n) | - |
+Recursive traversals use the call stack implicitly. In interviews, you may be asked for iterative versions that use an explicit stack.
+
+<CodePlayground code={`class TreeNode:
+    def __init__(self, val=0, left=None, right=None):
+        self.val = val
+        self.left = left
+        self.right = right
+
+def inorder_iterative(root):
+    result, stack = [], []
+    curr = root
+    while curr or stack:
+        while curr:                # go left as far as possible
+            stack.append(curr)
+            curr = curr.left
+        curr = stack.pop()         # visit node
+        result.append(curr.val)
+        curr = curr.right          # move to right subtree
+    return result
+
+def preorder_iterative(root):
+    if not root:
+        return []
+    result, stack = [], [root]
+    while stack:
+        node = stack.pop()
+        result.append(node.val)
+        if node.right:             # push right first so left is processed first
+            stack.append(node.right)
+        if node.left:
+            stack.append(node.left)
+    return result
+
+def postorder_iterative(root):
+    """Two-stack approach: reverse of modified preorder."""
+    if not root:
+        return []
+    result, stack = [], [root]
+    while stack:
+        node = stack.pop()
+        result.append(node.val)
+        if node.left:
+            stack.append(node.left)
+        if node.right:
+            stack.append(node.right)
+    return result[::-1]            # reverse gives postorder
+
+#        1
+#       / \\
+#      2   3
+#     / \\
+#    4   5
+root = TreeNode(1)
+root.left = TreeNode(2)
+root.right = TreeNode(3)
+root.left.left = TreeNode(4)
+root.left.right = TreeNode(5)
+
+print("Inorder (iterative):  ", inorder_iterative(root))
+print("Preorder (iterative): ", preorder_iterative(root))
+print("Postorder (iterative):", postorder_iterative(root))`} title="Iterative DFS Traversals" />
+
+### Level-Order Traversal (BFS)
+
+Level-order visits nodes level by level, left to right. It uses a **queue** instead of a stack.
+
+<CodePlayground code={`from collections import deque
+
+class TreeNode:
+    def __init__(self, val=0, left=None, right=None):
+        self.val = val
+        self.left = left
+        self.right = right
+
+def level_order(root):
+    """BFS level-order traversal returning list of levels."""
+    if not root:
+        return []
+    result = []
+    queue = deque([root])
+    while queue:
+        level_size = len(queue)
+        level = []
+        for _ in range(level_size):
+            node = queue.popleft()
+            level.append(node.val)
+            if node.left:
+                queue.append(node.left)
+            if node.right:
+                queue.append(node.right)
+        result.append(level)
+    return result
+
+#        3
+#       / \\
+#      9  20
+#        /  \\
+#       15   7
+root = TreeNode(3)
+root.left = TreeNode(9)
+root.right = TreeNode(20)
+root.right.left = TreeNode(15)
+root.right.right = TreeNode(7)
+
+levels = level_order(root)
+for i, lvl in enumerate(levels):
+    print(f"Level {i}: {lvl}")
+# Level 0: [3]
+# Level 1: [9, 20]
+# Level 2: [15, 7]`} title="Level-Order (BFS) Traversal" />
+
+## Common Problems
+
+### Maximum Depth
+
+The height of a tree equals the maximum depth of any node. This is a classic recursive problem: the depth of a tree is $1 + \max(\text{depth}(left), \text{depth}(right))$.
+
+<CodePlayground code={`class TreeNode:
+    def __init__(self, val=0, left=None, right=None):
+        self.val = val
+        self.left = left
+        self.right = right
+
+def max_depth(root):
+    if not root:
+        return 0
+    return 1 + max(max_depth(root.left), max_depth(root.right))
+
+#        1
+#       / \\
+#      2   3
+#     /
+#    4
+root = TreeNode(1)
+root.left = TreeNode(2)
+root.right = TreeNode(3)
+root.left.left = TreeNode(4)
+
+print("Max depth:", max_depth(root))  # 3`} title="Maximum Depth" />
+
+### Diameter of a Binary Tree
+
+The **diameter** is the length of the longest path between any two nodes (measured in edges). The path may or may not pass through the root.
+
+<CodePlayground code={`class TreeNode:
+    def __init__(self, val=0, left=None, right=None):
+        self.val = val
+        self.left = left
+        self.right = right
+
+def diameter(root):
+    best = 0
+
+    def height(node):
+        nonlocal best
+        if not node:
+            return 0
+        lh = height(node.left)
+        rh = height(node.right)
+        best = max(best, lh + rh)  # path through this node
+        return 1 + max(lh, rh)
+
+    height(root)
+    return best
+
+#        1
+#       / \\
+#      2   3
+#     / \\
+#    4   5
+root = TreeNode(1)
+root.left = TreeNode(2)
+root.right = TreeNode(3)
+root.left.left = TreeNode(4)
+root.left.right = TreeNode(5)
+
+print("Diameter:", diameter(root))  # 3 (path: 4->2->1->3 or 5->2->1->3)`} title="Diameter of Binary Tree" />
+
+### Lowest Common Ancestor (LCA)
+
+Given two nodes $p$ and $q$, their LCA is the deepest node that is an ancestor of both.
+
+<CodePlayground code={`class TreeNode:
+    def __init__(self, val=0, left=None, right=None):
+        self.val = val
+        self.left = left
+        self.right = right
+
+def lowest_common_ancestor(root, p, q):
+    """If both p and q exist in the tree rooted at root,
+    return their LCA. Classic recursive approach."""
+    if not root or root == p or root == q:
+        return root
+    left = lowest_common_ancestor(root.left, p, q)
+    right = lowest_common_ancestor(root.right, p, q)
+    if left and right:
+        return root       # p and q are in different subtrees
+    return left or right   # both are in the same subtree
+
+#        3
+#       / \\
+#      5   1
+#     / \\
+#    6   2
+root = TreeNode(3)
+root.left = TreeNode(5)
+root.right = TreeNode(1)
+root.left.left = TreeNode(6)
+root.left.right = TreeNode(2)
+
+p, q = root.left, root.left.right  # nodes 5 and 2
+lca = lowest_common_ancestor(root, p, q)
+print(f"LCA of {p.val} and {q.val} is {lca.val}")  # 5
+
+p, q = root.left, root.right  # nodes 5 and 1
+lca = lowest_common_ancestor(root, p, q)
+print(f"LCA of {p.val} and {q.val} is {lca.val}")  # 3`} title="Lowest Common Ancestor" />
+
+### Serialize and Deserialize
+
+Serialization converts a tree to a string; deserialization rebuilds the tree. A common approach uses preorder traversal with a sentinel for null nodes.
+
+<CodePlayground code={`class TreeNode:
+    def __init__(self, val=0, left=None, right=None):
+        self.val = val
+        self.left = left
+        self.right = right
+
+def serialize(root):
+    """Preorder serialization with '#' for null."""
+    tokens = []
+    def dfs(node):
+        if not node:
+            tokens.append("#")
+            return
+        tokens.append(str(node.val))
+        dfs(node.left)
+        dfs(node.right)
+    dfs(root)
+    return ",".join(tokens)
+
+def deserialize(data):
+    tokens = iter(data.split(","))
+    def dfs():
+        val = next(tokens)
+        if val == "#":
+            return None
+        node = TreeNode(int(val))
+        node.left = dfs()
+        node.right = dfs()
+        return node
+    return dfs()
+
+# Build tree:  1
+#             / \\
+#            2   3
+#               / \\
+#              4   5
+root = TreeNode(1)
+root.left = TreeNode(2)
+root.right = TreeNode(3)
+root.right.left = TreeNode(4)
+root.right.right = TreeNode(5)
+
+s = serialize(root)
+print("Serialized:", s)
+
+root2 = deserialize(s)
+print("Deserialized root:", root2.val)
+print("Right child:", root2.right.val)
+print("Right->Left:", root2.right.left.val)`} title="Serialize & Deserialize" />
+
+## Complexity Summary
+
+| Operation | Time | Space |
+|-----------|------|-------|
+| Any traversal | $O(n)$ | $O(h)$ recursive stack / $O(n)$ for BFS queue |
+| Max depth | $O(n)$ | $O(h)$ |
+| Diameter | $O(n)$ | $O(h)$ |
+| LCA | $O(n)$ | $O(h)$ |
+| Serialize / Deserialize | $O(n)$ | $O(n)$ |
+
+Here $h$ is the tree height: $O(\log n)$ for balanced trees, $O(n)$ for degenerate trees.
+
+## Key Takeaways
+
+1. **Binary trees** are the foundation of many advanced data structures. Master the terminology first.
+2. **Four traversals** -- inorder, preorder, postorder (DFS), and level-order (BFS) -- each have distinct use cases.
+3. Know both **recursive and iterative** implementations of DFS traversals; interviewers often request iterative versions.
+4. Most tree problems follow a **recursive pattern**: solve for left subtree, solve for right subtree, combine results at the current node.
+5. The height $h$ determines the space complexity of recursive solutions: $O(\log n)$ for balanced trees, $O(n)$ worst case.
 
 ---
 
-*Full content coming soon.*
+Next: [Binary Search Trees](./binary-search-trees)

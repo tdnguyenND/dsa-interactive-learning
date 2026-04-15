@@ -7,21 +7,15 @@ import CodePlayground from '@site/src/components/CodePlayground';
 
 # Binary Search
 
-Binary search is an efficient algorithm for finding an element in a sorted array by repeatedly dividing the search interval in half. This page covers the iterative and recursive implementations, as well as common variations.
+Binary search finds a target in a **sorted** array by repeatedly halving the search space. It runs in $O(\log n)$ time — searching 1 billion elements takes at most 30 steps.
 
-## Overview
-
-Binary search works on sorted arrays by comparing the target to the middle element. If the target is smaller, search the left half; if larger, search the right half. This halving process gives O(log n) time complexity, making it far more efficient than linear search for large datasets.
-
-## Implementation
+## Classic binary search
 
 <CodePlayground
-  code={`# Binary Search - Iterative and Recursive
-
-def binary_search_iterative(arr, target):
+  code={`def binary_search(arr, target):
     left, right = 0, len(arr) - 1
     while left <= right:
-        mid = (left + right) // 2
+        mid = left + (right - left) // 2  # avoid overflow
         if arr[mid] == target:
             return mid
         elif arr[mid] < target:
@@ -30,38 +24,217 @@ def binary_search_iterative(arr, target):
             right = mid - 1
     return -1
 
-def binary_search_recursive(arr, target, left, right):
-    if left > right:
-        return -1
-    mid = (left + right) // 2
-    if arr[mid] == target:
-        return mid
-    elif arr[mid] < target:
-        return binary_search_recursive(arr, target, mid + 1, right)
-    else:
-        return binary_search_recursive(arr, target, left, mid - 1)
-
-arr = [2, 5, 8, 12, 16, 23, 38, 45, 67, 91]
-target = 23
-
-idx = binary_search_iterative(arr, target)
-print(f"Iterative: {target} found at index {idx}")
-
-idx = binary_search_recursive(arr, target, 0, len(arr) - 1)
-print(f"Recursive: {target} found at index {idx}")
-
-# Searching for a value not in the array
-print(f"Search for 50: index {binary_search_iterative(arr, 50)}")`}
-  title="Binary Search Example"
+arr = [1, 3, 5, 7, 9, 11, 13, 15]
+for target in [7, 10]:
+    idx = binary_search(arr, target)
+    print(f"Search {target}: index {idx}")`}
+  title="Classic Binary Search"
 />
+
+## Left boundary (bisect_left)
+
+Find the **leftmost** position where target could be inserted to keep the array sorted. Equivalent to finding the first element $\geq$ target.
+
+<CodePlayground
+  code={`def bisect_left(arr, target):
+    """Find first index where arr[i] >= target"""
+    left, right = 0, len(arr)
+    while left < right:
+        mid = (left + right) // 2
+        if arr[mid] < target:
+            left = mid + 1
+        else:
+            right = mid
+    return left
+
+def bisect_right(arr, target):
+    """Find first index where arr[i] > target"""
+    left, right = 0, len(arr)
+    while left < right:
+        mid = (left + right) // 2
+        if arr[mid] <= target:
+            left = mid + 1
+        else:
+            right = mid
+    return left
+
+arr = [1, 3, 5, 5, 5, 7, 9]
+print(f"Array: {arr}")
+print(f"bisect_left(5)  = {bisect_left(arr, 5)}")   # 2
+print(f"bisect_right(5) = {bisect_right(arr, 5)}")  # 5
+print(f"Count of 5s: {bisect_right(arr, 5) - bisect_left(arr, 5)}")
+
+# Find first and last occurrence
+def find_range(arr, target):
+    lo = bisect_left(arr, target)
+    hi = bisect_right(arr, target) - 1
+    if lo < len(arr) and arr[lo] == target:
+        return [lo, hi]
+    return [-1, -1]
+
+print(f"Range of 5: {find_range(arr, 5)}")`}
+  title="Left / Right Boundaries"
+/>
+
+## Search in rotated sorted array
+
+<CodePlayground
+  code={`def search_rotated(nums, target):
+    """Search in rotated sorted array — O(log n)"""
+    left, right = 0, len(nums) - 1
+    while left <= right:
+        mid = (left + right) // 2
+        if nums[mid] == target:
+            return mid
+
+        # Left half is sorted
+        if nums[left] <= nums[mid]:
+            if nums[left] <= target < nums[mid]:
+                right = mid - 1
+            else:
+                left = mid + 1
+        # Right half is sorted
+        else:
+            if nums[mid] < target <= nums[right]:
+                left = mid + 1
+            else:
+                right = mid - 1
+    return -1
+
+arr = [4, 5, 6, 7, 0, 1, 2]
+for t in [0, 3, 6]:
+    print(f"Search {t} in {arr}: index {search_rotated(arr, t)}")`}
+  title="Search in Rotated Sorted Array"
+/>
+
+## Find peak element
+
+<CodePlayground
+  code={`def find_peak(nums):
+    """Find any peak element — O(log n)
+    A peak is greater than its neighbors."""
+    left, right = 0, len(nums) - 1
+    while left < right:
+        mid = (left + right) // 2
+        if nums[mid] < nums[mid + 1]:
+            left = mid + 1   # peak is to the right
+        else:
+            right = mid       # peak is at mid or to the left
+    return left
+
+arr = [1, 3, 5, 4, 2]
+peak = find_peak(arr)
+print(f"Array: {arr}")
+print(f"Peak at index {peak}, value {arr[peak]}")
+
+arr2 = [1, 2, 1, 3, 5, 6, 4]
+peak2 = find_peak(arr2)
+print(f"Array: {arr2}")
+print(f"Peak at index {peak2}, value {arr2[peak2]}")`}
+  title="Find Peak Element"
+/>
+
+## Binary search on answer
+
+Instead of searching in an array, we search on the **answer space**. "What is the minimum/maximum value X such that condition(X) is true?"
+
+<CodePlayground
+  code={`def min_eating_speed(piles, h):
+    """Koko eating bananas: find minimum speed to finish in h hours.
+    Binary search on the answer (speed)."""
+    def can_finish(speed):
+        hours = sum((p + speed - 1) // speed for p in piles)
+        return hours <= h
+
+    left, right = 1, max(piles)
+    while left < right:
+        mid = (left + right) // 2
+        if can_finish(mid):
+            right = mid
+        else:
+            left = mid + 1
+    return left
+
+piles = [3, 6, 7, 11]
+h = 8
+print(f"Piles: {piles}, Hours: {h}")
+print(f"Min speed: {min_eating_speed(piles, h)}")  # 4
+
+def ship_within_days(weights, days):
+    """Find minimum ship capacity to deliver in 'days' days."""
+    def can_ship(capacity):
+        d, current = 1, 0
+        for w in weights:
+            if current + w > capacity:
+                d += 1; current = 0
+            current += w
+        return d <= days
+
+    left, right = max(weights), sum(weights)
+    while left < right:
+        mid = (left + right) // 2
+        if can_ship(mid):
+            right = mid
+        else:
+            left = mid + 1
+    return left
+
+weights = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
+d = 5
+print(f"Weights: {weights}, Days: {d}")
+print(f"Min capacity: {ship_within_days(weights, d)}")  # 15`}
+  title="Binary Search on Answer"
+/>
+
+## Sqrt using binary search
+
+<CodePlayground
+  code={`def sqrt_int(x):
+    """Integer square root: floor(sqrt(x))"""
+    if x < 2:
+        return x
+    left, right = 1, x // 2
+    while left <= right:
+        mid = (left + right) // 2
+        if mid * mid == x:
+            return mid
+        elif mid * mid < x:
+            left = mid + 1
+        else:
+            right = mid - 1
+    return right  # floor of sqrt
+
+for n in [4, 8, 16, 27, 100]:
+    print(f"sqrt({n}) = {sqrt_int(n)}")`}
+  title="Integer Square Root"
+/>
+
+## Templates summary
+
+| Pattern | Condition | Loop | Return |
+|---------|-----------|------|--------|
+| Exact match | `arr[mid] == target` | `left <= right` | `mid` or `-1` |
+| Left boundary | `arr[mid] < target` | `left < right` | `left` |
+| Right boundary | `arr[mid] <= target` | `left < right` | `left` |
+| Search on answer | `condition(mid)` | `left < right` | `left` |
 
 ## Complexity
 
-| Operation       | Time      | Space        |
-|-----------------|-----------|--------------|
-| Iterative       | O(log n)  | O(1)         |
-| Recursive       | O(log n)  | O(log n)     |
+| | Time | Space |
+|---|------|-------|
+| Binary Search | $O(\log n)$ | $O(1)$ |
+| Prerequisite | Array must be **sorted** | — |
 
 ---
 
-*Full content coming soon.*
+## Key takeaways
+
+1. Binary search requires a **sorted** or **monotonic** property
+2. Left boundary (`< target`) vs right boundary (`<= target`) — subtle but critical difference
+3. "Binary search on answer" applies when: you can verify a candidate answer in $O(n)$ and the answer space is monotonic
+4. Always use `left + (right - left) // 2` to avoid integer overflow
+5. Watch for off-by-one errors: `left <= right` vs `left < right`
+
+---
+
+**Next:** [Introduction to Dynamic Programming](/docs/dynamic-programming/dp-introduction)
