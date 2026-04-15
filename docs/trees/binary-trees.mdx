@@ -1,0 +1,70 @@
+---
+sidebar_position: 1
+title: "Binary Trees"
+---
+
+import CodePlayground from '@site/src/components/CodePlayground';
+
+# Binary Trees
+
+A binary tree is a hierarchical data structure where each node has at most two children, referred to as the left child and the right child. This page covers the TreeNode class, and three fundamental traversal methods: inorder, preorder, and postorder.
+
+## Overview
+
+Binary trees form the foundation for many advanced data structures such as binary search trees, heaps, and segment trees. Understanding tree traversal is essential for solving a wide range of problems in computer science.
+
+## Implementation
+
+<CodePlayground
+  code={`# Binary Tree with Traversals
+class TreeNode:
+    def __init__(self, val):
+        self.val = val
+        self.left = None
+        self.right = None
+
+def inorder(node):
+    if not node:
+        return []
+    return inorder(node.left) + [node.val] + inorder(node.right)
+
+def preorder(node):
+    if not node:
+        return []
+    return [node.val] + preorder(node.left) + preorder(node.right)
+
+def postorder(node):
+    if not node:
+        return []
+    return postorder(node.left) + postorder(node.right) + [node.val]
+
+# Build a sample tree:
+#        1
+#       / \\
+#      2   3
+#     / \\
+#    4   5
+root = TreeNode(1)
+root.left = TreeNode(2)
+root.right = TreeNode(3)
+root.left.left = TreeNode(4)
+root.left.right = TreeNode(5)
+
+print("Inorder:  ", inorder(root))
+print("Preorder: ", preorder(root))
+print("Postorder:", postorder(root))`}
+  title="Binary Trees Example"
+/>
+
+## Complexity
+
+| Operation       | Time   | Space  |
+|-----------------|--------|--------|
+| Traversal       | O(n)   | O(h)   |
+| Search          | O(n)   | O(h)   |
+| Insert          | O(n)   | O(h)   |
+| Height (h)      | O(log n) to O(n) | - |
+
+---
+
+*Full content coming soon.*

@@ -1,0 +1,66 @@
+---
+sidebar_position: 1
+title: "Stacks"
+---
+
+import CodePlayground from '@site/src/components/CodePlayground';
+
+# Stacks
+
+A stack is a linear data structure that follows the Last-In-First-Out (LIFO) principle. This page covers push, pop, and peek operations, along with common use cases like expression evaluation and backtracking.
+
+## Overview
+
+Stacks allow insertion and removal only at the top. Think of a stack of plates: you add to the top and remove from the top. Stacks are used extensively in recursion, undo mechanisms, parsing expressions, and depth-first search.
+
+## Implementation
+
+<CodePlayground
+  code={`# Stack Implementation using a List
+class Stack:
+    def __init__(self):
+        self.items = []
+
+    def push(self, item):
+        self.items.append(item)
+
+    def pop(self):
+        if self.is_empty():
+            raise IndexError("Stack is empty")
+        return self.items.pop()
+
+    def peek(self):
+        if self.is_empty():
+            raise IndexError("Stack is empty")
+        return self.items[-1]
+
+    def is_empty(self):
+        return len(self.items) == 0
+
+    def size(self):
+        return len(self.items)
+
+# Usage
+stack = Stack()
+for val in [10, 20, 30]:
+    stack.push(val)
+    print(f"Pushed {val}, top is now {stack.peek()}")
+
+print(f"Popped: {stack.pop()}")
+print(f"Top after pop: {stack.peek()}")
+print(f"Stack size: {stack.size()}")`}
+  title="Stacks Example"
+/>
+
+## Complexity
+
+| Operation | Time | Space |
+|-----------|------|-------|
+| Push      | O(1) | O(1)  |
+| Pop       | O(1) | O(1)  |
+| Peek      | O(1) | O(1)  |
+| Search    | O(n) | O(1)  |
+
+---
+
+*Full content coming soon.*

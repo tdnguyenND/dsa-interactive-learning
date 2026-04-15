@@ -1,0 +1,68 @@
+---
+sidebar_position: 1
+title: "Singly Linked List"
+---
+
+import CodePlayground from '@site/src/components/CodePlayground';
+
+# Singly Linked List
+
+A singly linked list is a linear data structure where each element (node) contains a value and a pointer to the next node. This page covers the Node class, list construction, traversal, insertion, and deletion operations.
+
+## Overview
+
+Unlike arrays, linked lists do not store elements in contiguous memory. Each node holds a reference to the next node, forming a chain. This makes insertion and deletion at the head O(1), but accessing an element by index requires traversal from the head.
+
+## Implementation
+
+<CodePlayground
+  code={`# Singly Linked List Implementation
+class Node:
+    def __init__(self, data):
+        self.data = data
+        self.next = None
+
+class LinkedList:
+    def __init__(self):
+        self.head = None
+
+    def append(self, data):
+        new_node = Node(data)
+        if not self.head:
+            self.head = new_node
+            return
+        curr = self.head
+        while curr.next:
+            curr = curr.next
+        curr.next = new_node
+
+    def traverse(self):
+        elements = []
+        curr = self.head
+        while curr:
+            elements.append(curr.data)
+            curr = curr.next
+        return elements
+
+# Usage
+ll = LinkedList()
+for val in [1, 2, 3, 4, 5]:
+    ll.append(val)
+
+print("Linked List:", ll.traverse())`}
+  title="Singly Linked List Example"
+/>
+
+## Complexity
+
+| Operation         | Time | Space |
+|-------------------|------|-------|
+| Access by index   | O(n) | O(1)  |
+| Search            | O(n) | O(1)  |
+| Insert at head    | O(1) | O(1)  |
+| Insert at tail    | O(n) | O(1)  |
+| Delete from head  | O(1) | O(1)  |
+
+---
+
+*Full content coming soon.*

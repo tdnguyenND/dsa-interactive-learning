@@ -1,0 +1,63 @@
+---
+sidebar_position: 1
+title: "Introduction to Dynamic Programming"
+---
+
+import CodePlayground from '@site/src/components/CodePlayground';
+
+# Introduction to Dynamic Programming
+
+Dynamic programming (DP) is a technique for solving problems by breaking them into overlapping subproblems and storing their solutions to avoid redundant computation. This page introduces the core concepts of memoization and tabulation using the classic Fibonacci example.
+
+## Overview
+
+DP applies when a problem has two key properties: optimal substructure (the solution can be built from solutions to subproblems) and overlapping subproblems (the same subproblems are solved multiple times). The two main approaches are top-down (memoization) and bottom-up (tabulation).
+
+## Implementation
+
+<CodePlayground
+  code={`# Fibonacci: Naive vs Memoization vs Tabulation
+
+# 1. Naive recursive - O(2^n)
+def fib_naive(n):
+    if n <= 1:
+        return n
+    return fib_naive(n - 1) + fib_naive(n - 2)
+
+# 2. Top-down with memoization - O(n)
+def fib_memo(n, memo={}):
+    if n in memo:
+        return memo[n]
+    if n <= 1:
+        return n
+    memo[n] = fib_memo(n - 1, memo) + fib_memo(n - 2, memo)
+    return memo[n]
+
+# 3. Bottom-up tabulation - O(n)
+def fib_tab(n):
+    if n <= 1:
+        return n
+    dp = [0] * (n + 1)
+    dp[1] = 1
+    for i in range(2, n + 1):
+        dp[i] = dp[i - 1] + dp[i - 2]
+    return dp[n]
+
+n = 30
+print(f"fib_memo({n}) = {fib_memo(n)}")
+print(f"fib_tab({n}) = {fib_tab(n)}")
+print(f"fib_naive(10) = {fib_naive(10)} (small n only)")`}
+  title="Introduction to Dynamic Programming Example"
+/>
+
+## Complexity
+
+| Approach     | Time   | Space |
+|-------------|--------|-------|
+| Naive       | O(2^n) | O(n)  |
+| Memoization | O(n)   | O(n)  |
+| Tabulation  | O(n)   | O(n)  |
+
+---
+
+*Full content coming soon.*

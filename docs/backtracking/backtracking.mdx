@@ -1,0 +1,63 @@
+---
+sidebar_position: 1
+title: "Backtracking"
+---
+
+import CodePlayground from '@site/src/components/CodePlayground';
+
+# Backtracking
+
+Backtracking is an algorithmic technique that builds candidates for solutions incrementally and abandons a candidate as soon as it determines the candidate cannot lead to a valid solution. This page introduces backtracking through the classic N-Queens problem.
+
+## Overview
+
+Backtracking systematically explores all possible configurations by making choices and undoing them (backtracking) when they lead to dead ends. It is essentially a depth-first search of the solution space with pruning. Common applications include constraint satisfaction problems, combinatorial search, and puzzle solving.
+
+## Implementation
+
+<CodePlayground
+  code={`# N-Queens Problem using Backtracking
+def solve_n_queens(n):
+    solutions = []
+
+    def is_safe(board, row, col):
+        for r in range(row):
+            if board[r] == col:
+                return False
+            if abs(board[r] - col) == abs(r - row):
+                return False
+        return True
+
+    def backtrack(board, row):
+        if row == n:
+            solutions.append(board[:])
+            return
+        for col in range(n):
+            if is_safe(board, row, col):
+                board[row] = col
+                backtrack(board, row + 1)
+                board[row] = -1  # undo choice
+
+    backtrack([-1] * n, 0)
+    return solutions
+
+n = 4
+solutions = solve_n_queens(n)
+print(f"Number of solutions for {n}-Queens: {len(solutions)}")
+for i, sol in enumerate(solutions):
+    print(f"\\nSolution {i + 1}:")
+    for row in range(n):
+        line = "." * sol[row] + "Q" + "." * (n - sol[row] - 1)
+        print(f"  {line}")`}
+  title="Backtracking Example"
+/>
+
+## Complexity
+
+| Problem    | Time       | Space |
+|------------|------------|-------|
+| N-Queens   | O(n!)      | O(n)  |
+
+---
+
+*Full content coming soon.*

@@ -1,0 +1,67 @@
+---
+sidebar_position: 1
+title: "Binary Search"
+---
+
+import CodePlayground from '@site/src/components/CodePlayground';
+
+# Binary Search
+
+Binary search is an efficient algorithm for finding an element in a sorted array by repeatedly dividing the search interval in half. This page covers the iterative and recursive implementations, as well as common variations.
+
+## Overview
+
+Binary search works on sorted arrays by comparing the target to the middle element. If the target is smaller, search the left half; if larger, search the right half. This halving process gives O(log n) time complexity, making it far more efficient than linear search for large datasets.
+
+## Implementation
+
+<CodePlayground
+  code={`# Binary Search - Iterative and Recursive
+
+def binary_search_iterative(arr, target):
+    left, right = 0, len(arr) - 1
+    while left <= right:
+        mid = (left + right) // 2
+        if arr[mid] == target:
+            return mid
+        elif arr[mid] < target:
+            left = mid + 1
+        else:
+            right = mid - 1
+    return -1
+
+def binary_search_recursive(arr, target, left, right):
+    if left > right:
+        return -1
+    mid = (left + right) // 2
+    if arr[mid] == target:
+        return mid
+    elif arr[mid] < target:
+        return binary_search_recursive(arr, target, mid + 1, right)
+    else:
+        return binary_search_recursive(arr, target, left, mid - 1)
+
+arr = [2, 5, 8, 12, 16, 23, 38, 45, 67, 91]
+target = 23
+
+idx = binary_search_iterative(arr, target)
+print(f"Iterative: {target} found at index {idx}")
+
+idx = binary_search_recursive(arr, target, 0, len(arr) - 1)
+print(f"Recursive: {target} found at index {idx}")
+
+# Searching for a value not in the array
+print(f"Search for 50: index {binary_search_iterative(arr, 50)}")`}
+  title="Binary Search Example"
+/>
+
+## Complexity
+
+| Operation       | Time      | Space        |
+|-----------------|-----------|--------------|
+| Iterative       | O(log n)  | O(1)         |
+| Recursive       | O(log n)  | O(log n)     |
+
+---
+
+*Full content coming soon.*

@@ -1,0 +1,230 @@
+---
+sidebar_position: 1
+title: Big-O Notation
+---
+
+import CodePlayground from '@site/src/components/CodePlayground';
+
+# Big-O Notation
+
+Big-O notation describes how an algorithm's runtime or space usage grows as the input size increases. It gives us a way to compare algorithms independent of hardware or implementation details.
+
+## Why it matters
+
+When choosing between algorithms, we need a way to predict performance at scale. An algorithm that works fine on 100 items might be unusable on 1,000,000 items. Big-O tells us **the growth rate** — not the exact time.
+
+## Common complexities
+
+| Notation | Name | Example |
+|----------|------|---------|
+| $O(1)$ | Constant | Array access by index |
+| $O(\log n)$ | Logarithmic | Binary search |
+| $O(n)$ | Linear | Single loop through array |
+| $O(n \log n)$ | Linearithmic | Merge sort, quick sort (average) |
+| $O(n^2)$ | Quadratic | Nested loops (bubble sort) |
+| $O(2^n)$ | Exponential | Recursive fibonacci (naive) |
+| $O(n!)$ | Factorial | Generating all permutations |
+
+## Rules for calculating Big-O
+
+### 1. Drop constants
+
+$O(2n) = O(n)$, $O(100) = O(1)$
+
+We care about growth rate, not exact operations. Whether your loop does 1 or 5 operations per element, it's still $O(n)$.
+
+### 2. Drop lower-order terms
+
+$O(n^2 + n) = O(n^2)$
+
+As $n$ grows large, the dominant term determines the growth rate.
+
+### 3. Different inputs → different variables
+
+If a function takes two arrays of different sizes, use different variables:
+
+```python
+def print_pairs(a, b):
+    for x in a:       # O(a)
+        for y in b:   # O(b)
+            print(x, y)
+# Total: O(a × b), NOT O(n²)
+```
+
+## Examples
+
+### O(1) — Constant time
+
+<CodePlayground
+  code={`def get_first(arr):
+    """O(1) - Always one operation regardless of array size"""
+    return arr[0] if arr else None
+
+# Test with different sizes
+print(get_first([1, 2, 3]))           # small array
+print(get_first(list(range(10000))))   # huge array
+# Both take the same time!`}
+  title="O(1) — Constant Time"
+/>
+
+### O(n) — Linear time
+
+<CodePlayground
+  code={`def find_max(arr):
+    """O(n) - Must check every element once"""
+    if not arr:
+        return None
+    maximum = arr[0]
+    for num in arr:
+        if num > maximum:
+            maximum = num
+    return maximum
+
+print(find_max([3, 7, 2, 9, 1, 5]))
+print(find_max(list(range(100, 0, -1))))`}
+  title="O(n) — Linear Time"
+/>
+
+### O(n²) — Quadratic time
+
+<CodePlayground
+  code={`def has_duplicates_naive(arr):
+    """O(n²) - Compare every pair"""
+    count = 0
+    for i in range(len(arr)):
+        for j in range(i + 1, len(arr)):
+            count += 1
+            if arr[i] == arr[j]:
+                print(f"Duplicate found: {arr[i]} (after {count} comparisons)")
+                return True
+    print(f"No duplicates (checked {count} pairs)")
+    return False
+
+has_duplicates_naive([1, 2, 3, 4, 5])
+has_duplicates_naive([1, 2, 3, 2, 5])`}
+  title="O(n²) — Quadratic Time"
+/>
+
+### O(log n) — Logarithmic time
+
+<CodePlayground
+  code={`def binary_search(arr, target):
+    """O(log n) - Halve the search space each step"""
+    left, right = 0, len(arr) - 1
+    steps = 0
+
+    while left <= right:
+        steps += 1
+        mid = (left + right) // 2
+        print(f"Step {steps}: checking index {mid}, value {arr[mid]}")
+
+        if arr[mid] == target:
+            print(f"Found {target} at index {mid} in {steps} steps!")
+            return mid
+        elif arr[mid] < target:
+            left = mid + 1
+        else:
+            right = mid - 1
+
+    print(f"Not found after {steps} steps")
+    return -1
+
+# Search in a sorted array of 100 elements
+arr = list(range(0, 200, 2))  # [0, 2, 4, ..., 198]
+binary_search(arr, 42)`}
+  title="O(log n) — Logarithmic Time"
+/>
+
+## Comparing growth rates
+
+To see the dramatic difference between complexities, consider $n = 1000$:
+
+<CodePlayground
+  code={`import math
+
+n = 1000
+complexities = {
+    "O(1)":        1,
+    "O(log n)":    math.log2(n),
+    "O(n)":        n,
+    "O(n log n)":  n * math.log2(n),
+    "O(n²)":       n ** 2,
+    "O(2^n)":      "2^1000 (astronomical!)",
+}
+
+print(f"For n = {n}:")
+print(f"{'Complexity':<12} {'Operations':>20}")
+print("-" * 34)
+for name, ops in complexities.items():
+    if isinstance(ops, str):
+        print(f"{name:<12} {ops:>20}")
+    else:
+        print(f"{name:<12} {ops:>20,.0f}")`}
+  title="Growth Rate Comparison"
+/>
+
+## Space complexity
+
+Big-O also applies to **memory usage**. Common patterns:
+
+| Pattern | Space | Example |
+|---------|-------|---------|
+| Fixed variables | $O(1)$ | Swapping two numbers |
+| Copy of input | $O(n)$ | Creating a sorted copy |
+| 2D matrix | $O(n^2)$ | Adjacency matrix |
+| Recursion stack | $O(n)$ or $O(\log n)$ | Depends on recursion depth |
+
+<CodePlayground
+  code={`def space_examples():
+    # O(1) space - fixed number of variables
+    a, b = 5, 10
+    a, b = b, a
+    print(f"Swap: a={a}, b={b}")
+
+    # O(n) space - new array proportional to input
+    original = [3, 1, 4, 1, 5, 9, 2, 6]
+    sorted_copy = sorted(original)  # creates new list
+    print(f"Sorted copy: {sorted_copy}")
+
+    # O(n) space - hash set
+    seen = set()
+    for x in original:
+        seen.add(x)
+    print(f"Unique elements: {seen}")
+
+space_examples()`}
+  title="Space Complexity Examples"
+/>
+
+## Best, Average, and Worst Case
+
+An algorithm can have different complexities depending on the input:
+
+- **Best case**: The most favorable input (e.g., already sorted for insertion sort → $O(n)$)
+- **Average case**: Expected performance for random input
+- **Worst case**: The least favorable input (e.g., reverse sorted for insertion sort → $O(n^2)$)
+
+Big-O typically refers to the **worst case** unless stated otherwise.
+
+## Amortized analysis
+
+Some operations are usually fast but occasionally slow. **Amortized analysis** averages the cost over a sequence of operations.
+
+**Example: Dynamic array (Python list)**
+- Most `append()` calls are $O(1)$
+- Occasionally, the array must resize (copy all elements) — $O(n)$
+- Amortized cost: still $O(1)$ per append, because resizing happens rarely enough
+
+---
+
+## Key takeaways
+
+1. Big-O describes **growth rate**, not exact time
+2. Focus on the **dominant term** — drop constants and lower-order terms
+3. Different inputs need **different variables**
+4. Consider both **time and space** complexity
+5. Worst case is the default unless stated otherwise
+
+---
+
+**Next:** [Recursion](/docs/fundamentals/recursion) — understanding recursive thinking and the call stack.

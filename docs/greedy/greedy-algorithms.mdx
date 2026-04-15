@@ -1,0 +1,62 @@
+---
+sidebar_position: 1
+title: "Greedy Algorithms"
+---
+
+import CodePlayground from '@site/src/components/CodePlayground';
+
+# Greedy Algorithms
+
+Greedy algorithms make the locally optimal choice at each step, hoping to find a global optimum. This page introduces the greedy strategy using the classic activity selection problem.
+
+## Overview
+
+A greedy algorithm builds a solution piece by piece, always choosing the next piece that offers the most immediate benefit. Greedy works when the problem has the greedy-choice property (a locally optimal choice leads to a globally optimal solution) and optimal substructure.
+
+## Implementation
+
+<CodePlayground
+  code={`# Activity Selection Problem (Greedy)
+# Given activities with start and end times,
+# select the maximum number of non-overlapping activities.
+
+def activity_selection(activities):
+    # Sort by end time
+    sorted_acts = sorted(activities, key=lambda x: x[1])
+
+    selected = [sorted_acts[0]]
+    last_end = sorted_acts[0][1]
+
+    for start, end in sorted_acts[1:]:
+        if start >= last_end:
+            selected.append((start, end))
+            last_end = end
+
+    return selected
+
+# Activities as (start_time, end_time)
+activities = [
+    (1, 4), (3, 5), (0, 6),
+    (5, 7), (3, 9), (5, 9),
+    (6, 10), (8, 11), (8, 12),
+    (2, 14), (12, 16)
+]
+
+result = activity_selection(activities)
+print(f"Total activities: {len(activities)}")
+print(f"Max non-overlapping: {len(result)}")
+print("Selected activities:")
+for start, end in result:
+    print(f"  ({start}, {end})")`}
+  title="Greedy Algorithms Example"
+/>
+
+## Complexity
+
+| Operation           | Time       | Space |
+|---------------------|------------|-------|
+| Activity Selection  | O(n log n) | O(n)  |
+
+---
+
+*Full content coming soon.*

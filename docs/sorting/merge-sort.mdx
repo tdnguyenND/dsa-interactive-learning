@@ -1,0 +1,62 @@
+---
+sidebar_position: 2
+title: "Merge Sort"
+---
+
+import CodePlayground from '@site/src/components/CodePlayground';
+
+# Merge Sort
+
+Merge sort is a divide-and-conquer sorting algorithm that divides the array into halves, recursively sorts each half, and then merges the sorted halves back together. This page covers the implementation and analysis of merge sort.
+
+## Overview
+
+Merge sort guarantees O(n log n) time complexity in all cases (best, average, and worst), making it more predictable than algorithms like quicksort. It is a stable sort, meaning equal elements retain their relative order. The trade-off is that it requires O(n) additional space for the merge step.
+
+## Implementation
+
+<CodePlayground
+  code={`# Merge Sort Implementation
+def merge_sort(arr):
+    if len(arr) <= 1:
+        return arr
+
+    mid = len(arr) // 2
+    left = merge_sort(arr[:mid])
+    right = merge_sort(arr[mid:])
+
+    return merge(left, right)
+
+def merge(left, right):
+    result = []
+    i = j = 0
+    while i < len(left) and j < len(right):
+        if left[i] <= right[j]:
+            result.append(left[i])
+            i += 1
+        else:
+            result.append(right[j])
+            j += 1
+    result.extend(left[i:])
+    result.extend(right[j:])
+    return result
+
+# Example usage
+arr = [38, 27, 43, 3, 9, 82, 10]
+print("Original: ", arr)
+sorted_arr = merge_sort(arr)
+print("Sorted:   ", sorted_arr)`}
+  title="Merge Sort Example"
+/>
+
+## Complexity
+
+| Case    | Time       | Space |
+|---------|------------|-------|
+| Best    | O(n log n) | O(n)  |
+| Average | O(n log n) | O(n)  |
+| Worst   | O(n log n) | O(n)  |
+
+---
+
+*Full content coming soon.*

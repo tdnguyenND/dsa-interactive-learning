@@ -1,0 +1,230 @@
+---
+sidebar_position: 1
+title: Comparison Sorts
+---
+
+import CodePlayground from '@site/src/components/CodePlayground';
+import SortingVisualizer from '@site/src/components/DataStructures/SortingVisualizer';
+
+# Comparison Sorts
+
+Comparison-based sorting algorithms determine order by comparing pairs of elements. The theoretical lower bound for comparison sorts is $O(n \log n)$. Here we cover three simple $O(n^2)$ sorts that are important to understand before moving to the efficient ones.
+
+## Interactive Visualizer
+
+Try all three algorithms side by side. Use the **algorithm picker**, **Randomize** to generate new data, and **Play/Pause/Step** to control the animation.
+
+<SortingVisualizer algorithm="bubble" showAlgorithmPicker={true} />
+
+---
+
+## Bubble Sort
+
+Bubble sort repeatedly walks through the list, compares adjacent elements, and swaps them if they're out of order. The largest unsorted element "bubbles" to its correct position each pass.
+
+### How it works
+
+1. Compare adjacent elements from left to right
+2. Swap if the left element is greater than the right
+3. After each pass, the largest unsorted element is in its final position
+4. Repeat until no swaps are needed
+
+### Visualization
+
+<SortingVisualizer algorithm="bubble" />
+
+### Implementation
+
+<CodePlayground
+  code={`def bubble_sort(arr):
+    n = len(arr)
+    for i in range(n - 1):
+        swapped = False
+        for j in range(n - 1 - i):
+            if arr[j] > arr[j + 1]:
+                arr[j], arr[j + 1] = arr[j + 1], arr[j]
+                swapped = True
+        if not swapped:
+            break  # Early termination: already sorted
+    return arr
+
+# Test
+data = [64, 34, 25, 12, 22, 11, 90]
+print(f"Input:  {data}")
+print(f"Sorted: {bubble_sort(data)}")`}
+  title="Bubble Sort Implementation"
+/>
+
+### Complexity
+
+| Case | Time | Space |
+|------|------|-------|
+| Best | $O(n)$ | $O(1)$ |
+| Average | $O(n^2)$ | $O(1)$ |
+| Worst | $O(n^2)$ | $O(1)$ |
+
+**Best case** is $O(n)$ when the array is already sorted (one pass with no swaps triggers early termination). **Stable**: equal elements maintain their relative order.
+
+---
+
+## Selection Sort
+
+Selection sort finds the minimum element in the unsorted portion and places it at the beginning of the unsorted portion.
+
+### How it works
+
+1. Find the minimum element in the unsorted portion
+2. Swap it with the first unsorted element
+3. Move the boundary of the sorted portion one element right
+4. Repeat until the entire array is sorted
+
+### Visualization
+
+<SortingVisualizer algorithm="selection" />
+
+### Implementation
+
+<CodePlayground
+  code={`def selection_sort(arr):
+    n = len(arr)
+    for i in range(n - 1):
+        min_idx = i
+        for j in range(i + 1, n):
+            if arr[j] < arr[min_idx]:
+                min_idx = j
+        if min_idx != i:
+            arr[i], arr[min_idx] = arr[min_idx], arr[i]
+    return arr
+
+data = [64, 25, 12, 22, 11]
+print(f"Input:  {data}")
+print(f"Sorted: {selection_sort(data)}")`}
+  title="Selection Sort Implementation"
+/>
+
+### Complexity
+
+| Case | Time | Space |
+|------|------|-------|
+| Best | $O(n^2)$ | $O(1)$ |
+| Average | $O(n^2)$ | $O(1)$ |
+| Worst | $O(n^2)$ | $O(1)$ |
+
+**Not stable** (default implementation). Always $O(n^2)$ regardless of input — it always scans the full unsorted portion. Advantage: minimizes the number of swaps ($O(n)$ swaps).
+
+---
+
+## Insertion Sort
+
+Insertion sort builds the sorted array one element at a time by inserting each new element into its correct position in the already-sorted portion.
+
+### How it works
+
+1. Start with the first element (trivially sorted)
+2. Take the next element and compare it backwards through the sorted portion
+3. Shift elements right until the correct position is found
+4. Insert the element
+5. Repeat for all remaining elements
+
+### Visualization
+
+<SortingVisualizer algorithm="insertion" />
+
+### Implementation
+
+<CodePlayground
+  code={`def insertion_sort(arr):
+    for i in range(1, len(arr)):
+        key = arr[i]
+        j = i - 1
+        while j >= 0 and arr[j] > key:
+            arr[j + 1] = arr[j]
+            j -= 1
+        arr[j + 1] = key
+    return arr
+
+data = [12, 11, 13, 5, 6]
+print(f"Input:  {data}")
+print(f"Sorted: {insertion_sort(data)}")`}
+  title="Insertion Sort Implementation"
+/>
+
+### Complexity
+
+| Case | Time | Space |
+|------|------|-------|
+| Best | $O(n)$ | $O(1)$ |
+| Average | $O(n^2)$ | $O(1)$ |
+| Worst | $O(n^2)$ | $O(1)$ |
+
+**Best case** is $O(n)$ when the array is already sorted. **Stable**. Efficient for small arrays and nearly-sorted data. Often used as the base case in hybrid sorts (e.g., Timsort uses insertion sort for small runs).
+
+---
+
+## Comparison
+
+| Algorithm | Best | Average | Worst | Space | Stable | Swaps |
+|-----------|------|---------|-------|-------|--------|-------|
+| Bubble | $O(n)$ | $O(n^2)$ | $O(n^2)$ | $O(1)$ | Yes | $O(n^2)$ |
+| Selection | $O(n^2)$ | $O(n^2)$ | $O(n^2)$ | $O(1)$ | No | $O(n)$ |
+| Insertion | $O(n)$ | $O(n^2)$ | $O(n^2)$ | $O(1)$ | Yes | $O(n^2)$ |
+
+### When to use which?
+
+- **Insertion sort**: Best for small arrays ($n < 50$) or nearly-sorted data
+- **Selection sort**: When memory writes are expensive (minimizes swaps)
+- **Bubble sort**: Primarily educational — rarely used in practice
+
+<CodePlayground
+  code={`import time
+
+def bubble_sort(arr):
+    n = len(arr)
+    for i in range(n - 1):
+        swapped = False
+        for j in range(n - 1 - i):
+            if arr[j] > arr[j + 1]:
+                arr[j], arr[j + 1] = arr[j + 1], arr[j]
+                swapped = True
+        if not swapped:
+            break
+    return arr
+
+def selection_sort(arr):
+    n = len(arr)
+    for i in range(n - 1):
+        min_idx = i
+        for j in range(i + 1, n):
+            if arr[j] < arr[min_idx]:
+                min_idx = j
+        arr[i], arr[min_idx] = arr[min_idx], arr[i]
+    return arr
+
+def insertion_sort(arr):
+    for i in range(1, len(arr)):
+        key = arr[i]
+        j = i - 1
+        while j >= 0 and arr[j] > key:
+            arr[j + 1] = arr[j]
+            j -= 1
+        arr[j + 1] = key
+    return arr
+
+# Benchmark
+import random
+n = 2000
+data = list(range(n))
+random.shuffle(data)
+
+for name, func in [("Bubble", bubble_sort), ("Selection", selection_sort), ("Insertion", insertion_sort)]:
+    arr = data[:]
+    start = time.time()
+    func(arr)
+    elapsed = time.time() - start
+    print(f"{name:>10} sort: {elapsed:.4f}s for n={n}")`}
+  title="Performance Comparison"
+/>
+
+---
+
+**Next:** [Merge Sort](/docs/sorting/merge-sort) — the first $O(n \log n)$ sorting algorithm.

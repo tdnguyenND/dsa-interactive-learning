@@ -1,0 +1,200 @@
+---
+sidebar_position: 2
+title: Recursion
+---
+
+import CodePlayground from '@site/src/components/CodePlayground';
+
+# Recursion
+
+Recursion is when a function calls itself to solve a smaller instance of the same problem. It's a fundamental technique used in many algorithms — tree traversals, divide and conquer, backtracking, and dynamic programming all build on recursive thinking.
+
+## Anatomy of a recursive function
+
+Every recursive function needs:
+
+1. **Base case** — the condition that stops recursion (prevents infinite loops)
+2. **Recursive case** — the function calls itself with a smaller/simpler input
+3. **Progress toward base case** — each call must get closer to the base case
+
+```python
+def factorial(n):
+    if n <= 1:        # Base case
+        return 1
+    return n * factorial(n - 1)  # Recursive case (n shrinks by 1)
+```
+
+## How the call stack works
+
+Each recursive call adds a new frame to the call stack. When a base case is reached, frames start returning in reverse order (LIFO).
+
+<CodePlayground
+  code={`def factorial(n, depth=0):
+    indent = "  " * depth
+    print(f"{indent}factorial({n}) called")
+
+    if n <= 1:
+        print(f"{indent}Base case: return 1")
+        return 1
+
+    result = n * factorial(n - 1, depth + 1)
+    print(f"{indent}factorial({n}) = {n} * factorial({n-1}) = {result}")
+    return result
+
+print(f"Result: {factorial(5)}")`}
+  title="Call Stack Visualization"
+/>
+
+## Classic examples
+
+### Fibonacci sequence
+
+<CodePlayground
+  code={`# Naive recursive Fibonacci - O(2^n) time, O(n) space
+def fib_naive(n):
+    if n <= 1:
+        return n
+    return fib_naive(n - 1) + fib_naive(n - 2)
+
+# Memoized Fibonacci - O(n) time, O(n) space
+def fib_memo(n, memo={}):
+    if n in memo:
+        return memo[n]
+    if n <= 1:
+        return n
+    memo[n] = fib_memo(n - 1, memo) + fib_memo(n - 2, memo)
+    return memo[n]
+
+# Compare
+print("Naive (small n only):")
+for i in range(10):
+    print(f"  fib({i}) = {fib_naive(i)}")
+
+print(f"\\nMemoized fib(50) = {fib_memo(50)}")
+print(f"Memoized fib(100) = {fib_memo(100)}")`}
+  title="Fibonacci — Naive vs. Memoized"
+/>
+
+### Tower of Hanoi
+
+<CodePlayground
+  code={`def hanoi(n, source='A', target='C', auxiliary='B', depth=0):
+    """Move n disks from source to target using auxiliary"""
+    if n == 1:
+        print(f"{'  ' * depth}Move disk 1 from {source} to {target}")
+        return
+
+    # Move n-1 disks from source to auxiliary
+    hanoi(n - 1, source, auxiliary, target, depth + 1)
+
+    # Move the largest disk
+    print(f"{'  ' * depth}Move disk {n} from {source} to {target}")
+
+    # Move n-1 disks from auxiliary to target
+    hanoi(n - 1, auxiliary, target, source, depth + 1)
+
+print("Tower of Hanoi with 3 disks:")
+hanoi(3)
+print(f"\\nTotal moves for n disks: 2^n - 1 = {2**3 - 1}")`}
+  title="Tower of Hanoi"
+/>
+
+### Power set (all subsets)
+
+<CodePlayground
+  code={`def power_set(nums):
+    """Generate all subsets using recursion"""
+    result = []
+
+    def backtrack(start, current):
+        result.append(current[:])  # add a copy of current subset
+
+        for i in range(start, len(nums)):
+            current.append(nums[i])
+            backtrack(i + 1, current)
+            current.pop()  # backtrack
+
+    backtrack(0, [])
+    return result
+
+subsets = power_set([1, 2, 3])
+print(f"All subsets of [1, 2, 3]:")
+for s in subsets:
+    print(f"  {s}")
+print(f"\\nTotal: {len(subsets)} subsets (2^3 = {2**3})")`}
+  title="Power Set Generation"
+/>
+
+## Recursion vs. Iteration
+
+Every recursive algorithm can be rewritten iteratively (often using an explicit stack). The choice depends on clarity and constraints.
+
+| | Recursion | Iteration |
+|---|-----------|-----------|
+| **Readability** | Often clearer for tree/graph problems | Clearer for simple loops |
+| **Space** | Uses call stack ($O(\text{depth})$) | Can be $O(1)$ |
+| **Risk** | Stack overflow for deep recursion | No stack overflow |
+| **Speed** | Function call overhead | Slightly faster |
+
+<CodePlayground
+  code={`# Recursive vs Iterative factorial
+def factorial_recursive(n):
+    if n <= 1:
+        return 1
+    return n * factorial_recursive(n - 1)
+
+def factorial_iterative(n):
+    result = 1
+    for i in range(2, n + 1):
+        result *= i
+    return result
+
+# Both produce the same result
+for n in [5, 10, 20]:
+    r = factorial_recursive(n)
+    i = factorial_iterative(n)
+    print(f"factorial({n}) = {r}  (match: {r == i})")`}
+  title="Recursive vs. Iterative"
+/>
+
+## Tail recursion
+
+A function is **tail recursive** if the recursive call is the last operation. Some languages optimize this into a loop (Python does not, but it's worth understanding).
+
+```python
+# NOT tail recursive (multiplication happens after the recursive call)
+def factorial(n):
+    if n <= 1: return 1
+    return n * factorial(n - 1)
+
+# Tail recursive (recursive call is the last operation)
+def factorial_tail(n, acc=1):
+    if n <= 1: return acc
+    return factorial_tail(n - 1, acc * n)
+```
+
+## Complexity of recursive algorithms
+
+Use the **recurrence relation** to analyze:
+
+| Recurrence | Solution | Example |
+|------------|----------|---------|
+| $T(n) = T(n-1) + O(1)$ | $O(n)$ | Factorial |
+| $T(n) = T(n-1) + O(n)$ | $O(n^2)$ | Selection sort |
+| $T(n) = 2T(n/2) + O(n)$ | $O(n \log n)$ | Merge sort |
+| $T(n) = 2T(n-1) + O(1)$ | $O(2^n)$ | Fibonacci (naive) |
+| $T(n) = T(n/2) + O(1)$ | $O(\log n)$ | Binary search |
+
+---
+
+## Key takeaways
+
+1. Every recursive function needs a **base case** and must **progress toward it**
+2. Recursion uses the **call stack** — deep recursion can cause stack overflow
+3. Memoization turns exponential recursion into polynomial time
+4. Recursion is natural for trees, graphs, divide-and-conquer, and backtracking
+5. Always consider if an **iterative solution** might be simpler
+
+---
+
+**Next:** [Arrays](/docs/arrays-and-strings/arrays)
