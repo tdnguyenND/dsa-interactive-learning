@@ -9,13 +9,13 @@ const topics = [
   {title: 'Linked Lists', desc: 'Singly, doubly linked lists, fast/slow pointers', link: '/docs/linked-lists/singly-linked-list', icon: '->'},
   {title: 'Stacks & Queues', desc: 'LIFO, FIFO, monotonic stack, priority queue', link: '/docs/stacks-and-queues/stacks', icon: '||'},
   {title: 'Trees', desc: 'Binary trees, BST, AVL, heap, trie', link: '/docs/trees/binary-trees', icon: '/\\'},
-  {title: 'Hash Tables', desc: 'Hashing, collision handling, patterns', link: '/docs/hash-tables/hash-tables', icon: '#'},
+  {title: 'Hash Tables', desc: 'Hashing, collision handling, patterns', link: '/docs/hash-tables/introduction', icon: '#'},
   {title: 'Graphs', desc: 'BFS, DFS, Dijkstra, MST, topological sort', link: '/docs/graphs/graph-representations', icon: 'o-o'},
   {title: 'Sorting', desc: 'Bubble, merge, quick, heap, radix sort', link: '/docs/sorting/comparison-sorts', icon: '<>'},
   {title: 'Searching', desc: 'Binary search and its many variations', link: '/docs/searching/binary-search', icon: '?'},
   {title: 'Dynamic Programming', desc: 'Memoization, tabulation, knapsack, LCS', link: '/docs/dynamic-programming/dp-introduction', icon: 'dp'},
   {title: 'Greedy', desc: 'Greedy choice property, interval scheduling', link: '/docs/greedy/greedy-algorithms', icon: '>>'},
-  {title: 'Backtracking', desc: 'N-Queens, sudoku, permutations', link: '/docs/backtracking/backtracking', icon: '<-'},
+  {title: 'Backtracking', desc: 'N-Queens, sudoku, permutations', link: '/docs/backtracking/introduction', icon: '<-'},
 ];
 
 const features = [
