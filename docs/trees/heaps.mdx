@@ -7,126 +7,243 @@ import CodePlayground from '@site/src/components/CodePlayground';
 
 # Heaps & Priority Queues
 
-A heap is a complete binary tree that satisfies the **heap property**: in a min-heap, every parent is smaller than its children. It supports insert and extract-min in $O(\log n)$.
+A **heap** is a complete binary tree that satisfies the **heap property**: in a min-heap, every parent is smaller than or equal to its children; in a max-heap, every parent is larger. A **priority queue** is the abstract data type that a heap implements -- it supports efficient insertion and extraction of the minimum (or maximum) element.
 
-## Array representation
+## Heap Property and Array Representation
 
-A complete binary tree maps to an array: for element at index $i$:
-- Parent: $(i - 1) // 2$
-- Left child: $2i + 1$
-- Right child: $2i + 2$
+Because a heap is a **complete** binary tree (every level is fully filled except possibly the last, which is filled left to right), it maps perfectly to an array with no wasted space:
 
-## Implement min-heap from scratch
+- The root is at index 0
+- For a node at index $i$:
+  - **Left child**: $2i + 1$
+  - **Right child**: $2i + 2$
+  - **Parent**: $\lfloor (i - 1) / 2 \rfloor$
 
-<CodePlayground
-  code={`class MinHeap:
+No pointers are needed -- the tree structure is implicit in the array indices.
+
+<CodePlayground code={`# Visualize heap as array and tree
+heap = [1, 3, 5, 7, 9, 8, 6]
+
+print(f"Array: {heap}")
+print()
+
+def print_heap_tree(arr):
+    """Pretty-print a heap as a tree."""
+    import math
+    n = len(arr)
+    if n == 0:
+        return
+    depth = int(math.log2(n)) + 1
+    idx = 0
+    for level in range(depth):
+        count = min(2 ** level, n - idx)
+        spacing = 2 ** (depth - level) - 1
+        line = " " * (spacing // 2)
+        vals = []
+        for j in range(count):
+            vals.append(str(arr[idx + j]).center(3))
+        line += (" " * spacing).join(vals)
+        print(line)
+        idx += count
+
+print_heap_tree(heap)
+print()
+
+# Show parent-child relationships
+for i in range(len(heap)):
+    left = 2*i + 1 if 2*i + 1 < len(heap) else None
+    right = 2*i + 2 if 2*i + 2 < len(heap) else None
+    parent = (i - 1) // 2 if i > 0 else None
+    print(f"Index {i} (val={heap[i]}): parent={parent}, left={left}, right={right}")`} title="Heap Array Representation" />
+
+## Heap Operations
+
+### Insert (Sift Up)
+
+To insert, place the new element at the end of the array (maintaining the complete-tree shape) and **sift it up** by swapping with its parent while the heap property is violated. This takes $O(\log n)$ time since the tree has $\log n$ levels.
+
+### Extract-Min (Sift Down)
+
+To remove the minimum (the root), swap it with the last element, remove the last, and **sift the new root down** by swapping with the smaller child until the heap property is restored. Also $O(\log n)$.
+
+<CodePlayground code={`class MinHeap:
+    """Min-heap implementation from scratch."""
+
     def __init__(self):
         self.data = []
 
-    def push(self, val):
+    def __len__(self):
+        return len(self.data)
+
+    def peek(self):
+        if not self.data:
+            raise IndexError("Heap is empty")
+        return self.data[0]
+
+    def insert(self, val):
+        """Add value and sift up to restore heap property."""
         self.data.append(val)
         self._sift_up(len(self.data) - 1)
 
-    def pop(self):
+    def extract_min(self):
+        """Remove and return the minimum element."""
         if not self.data:
-            raise IndexError("empty heap")
+            raise IndexError("Heap is empty")
+        # Swap root with last element
         self.data[0], self.data[-1] = self.data[-1], self.data[0]
-        val = self.data.pop()
+        min_val = self.data.pop()
         if self.data:
             self._sift_down(0)
-        return val
+        return min_val
 
-    def peek(self):
-        return self.data[0] if self.data else None
-
-    def _sift_up(self, i):
-        while i > 0:
-            parent = (i - 1) // 2
-            if self.data[i] < self.data[parent]:
-                self.data[i], self.data[parent] = self.data[parent], self.data[i]
-                i = parent
+    def _sift_up(self, idx):
+        while idx > 0:
+            parent = (idx - 1) // 2
+            if self.data[idx] < self.data[parent]:
+                self.data[idx], self.data[parent] = self.data[parent], self.data[idx]
+                idx = parent
             else:
                 break
 
-    def _sift_down(self, i):
+    def _sift_down(self, idx):
         n = len(self.data)
         while True:
-            smallest = i
-            left, right = 2*i+1, 2*i+2
+            smallest = idx
+            left = 2 * idx + 1
+            right = 2 * idx + 2
             if left < n and self.data[left] < self.data[smallest]:
                 smallest = left
             if right < n and self.data[right] < self.data[smallest]:
                 smallest = right
-            if smallest == i:
+            if smallest != idx:
+                self.data[idx], self.data[smallest] = self.data[smallest], self.data[idx]
+                idx = smallest
+            else:
                 break
-            self.data[i], self.data[smallest] = self.data[smallest], self.data[i]
-            i = smallest
 
+# Demo
 h = MinHeap()
-for x in [5, 3, 8, 1, 2, 7]:
-    h.push(x)
-print("Extract in order:")
-while h.data:
-    print(f"  {h.pop()}", end="")`}
-  title="Min-Heap Implementation"
-/>
+for val in [5, 3, 8, 1, 2, 7]:
+    h.insert(val)
+    print(f"Insert {val}: heap = {h.data}")
 
-## Python heapq
+print()
+while len(h) > 0:
+    print(f"Extract min: {h.extract_min()}, remaining = {h.data}")`} title="Min-Heap from Scratch" />
 
-<CodePlayground
-  code={`import heapq
+## Heapify: Building a Heap in O(n)
 
-# Min-heap operations
-heap = []
-for x in [5, 3, 8, 1, 2, 7]:
-    heapq.heappush(heap, x)
+Inserting $n$ elements one by one costs $O(n \log n)$. But we can build a heap from an existing array in $O(n)$ by calling sift-down on every non-leaf node, starting from the bottom. This works because roughly half the nodes are leaves (no work needed), a quarter need at most 1 swap, an eighth need at most 2, and so on. The sum $\sum_{h=0}^{\log n} \frac{n}{2^{h+1}} \cdot h = O(n)$.
 
-print("Min-heap extraction:")
-while heap:
-    print(f"  {heapq.heappop(heap)}", end="")
+<CodePlayground code={`def heapify(arr):
+    """Convert array into a min-heap in O(n)."""
+    n = len(arr)
+    # Start from the last non-leaf node
+    for i in range(n // 2 - 1, -1, -1):
+        sift_down(arr, i, n)
+    return arr
+
+def sift_down(arr, idx, n):
+    while True:
+        smallest = idx
+        left = 2 * idx + 1
+        right = 2 * idx + 2
+        if left < n and arr[left] < arr[smallest]:
+            smallest = left
+        if right < n and arr[right] < arr[smallest]:
+            smallest = right
+        if smallest != idx:
+            arr[idx], arr[smallest] = arr[smallest], arr[idx]
+            idx = smallest
+        else:
+            break
+
+data = [9, 5, 6, 2, 3, 8, 1, 7, 4]
+print(f"Before heapify: {data}")
+heapify(data)
+print(f"After heapify:  {data}")
+
+# Verify: extract all in sorted order
+result = []
+n = len(data)
+for _ in range(n):
+    data[0], data[n-1] = data[n-1], data[0]
+    result.append(data[n-1])
+    n -= 1
+    sift_down(data, 0, n)
+print(f"Sorted output:  {result}")`} title="Heapify in O(n)" />
+
+## Python's heapq Module
+
+Python provides a min-heap via the `heapq` module. For a max-heap, negate the values.
+
+<CodePlayground code={`import heapq
+
+# Basic operations
+nums = [5, 3, 8, 1, 2, 7]
+heapq.heapify(nums)                 # O(n)
+print(f"Heapified: {nums}")
+
+heapq.heappush(nums, 0)             # O(log n)
+print(f"After push(0): {nums}")
+
+smallest = heapq.heappop(nums)      # O(log n)
+print(f"Popped: {smallest}, heap: {nums}")
+
+# Push and pop in one step (more efficient)
+result = heapq.heappushpop(nums, 4) # push 4, then pop smallest
+print(f"Pushpop(4): popped {result}, heap: {nums}")
+
+# Top k smallest / largest
+data = [10, 4, 5, 8, 6, 11, 26]
+print(f"\\n3 smallest: {heapq.nsmallest(3, data)}")
+print(f"3 largest:  {heapq.nlargest(3, data)}")
 
 # Max-heap trick: negate values
-print("\\n\\nMax-heap (negate):")
 max_heap = []
-for x in [5, 3, 8, 1, 2, 7]:
-    heapq.heappush(max_heap, -x)
+for val in [3, 1, 4, 1, 5]:
+    heapq.heappush(max_heap, -val)
+print(f"\\nMax-heap extract order:", end=" ")
 while max_heap:
-    print(f"  {-heapq.heappop(max_heap)}", end="")
+    print(-heapq.heappop(max_heap), end=" ")
+print()`} title="Python heapq Module" />
 
-# Heapify: O(n) to build heap from list
-print("\\n\\nHeapify:")
-arr = [5, 3, 8, 1, 2, 7]
-heapq.heapify(arr)
-print(f"  Heapified: {arr}")
-print(f"  Smallest: {arr[0]}")`}
-  title="Python heapq"
-/>
+## Problem: Top k Frequent Elements
 
-## Top K frequent elements
-
-<CodePlayground
-  code={`import heapq
+<CodePlayground code={`import heapq
 from collections import Counter
 
 def top_k_frequent(nums, k):
-    """Find k most frequent elements — O(n log k)"""
-    freq = Counter(nums)
-    # Use min-heap of size k
-    return heapq.nlargest(k, freq.keys(), key=freq.get)
+    """Return the k most frequent elements."""
+    counts = Counter(nums)
+    # Use a min-heap of size k
+    return heapq.nlargest(k, counts.keys(), key=counts.get)
 
-print(top_k_frequent([1,1,1,2,2,3], 2))  # [1, 2]
-print(top_k_frequent([1], 1))              # [1]`}
-  title="Top K Frequent Elements"
-/>
+def top_k_frequent_manual(nums, k):
+    """Manual approach: maintain a min-heap of size k."""
+    counts = Counter(nums)
+    min_heap = []
+    for num, freq in counts.items():
+        heapq.heappush(min_heap, (freq, num))
+        if len(min_heap) > k:
+            heapq.heappop(min_heap)
+    return [num for freq, num in min_heap]
 
-## Merge K sorted lists
+nums = [1, 1, 1, 2, 2, 3]
+print(f"Array: {nums}")
+print(f"Top 2 frequent: {top_k_frequent(nums, 2)}")
+print(f"Top 2 (manual): {top_k_frequent_manual(nums, 2)}")`} title="Top k Frequent Elements" />
 
-<CodePlayground
-  code={`import heapq
+## Problem: Merge k Sorted Lists
+
+Merge $k$ sorted lists into one sorted list. Push the first element of each list into a min-heap, then repeatedly extract the minimum and push the next element from that list.
+
+<CodePlayground code={`import heapq
 
 def merge_k_sorted(lists):
-    """Merge k sorted lists — O(N log k)"""
+    """Merge k sorted lists using a min-heap."""
     heap = []
+    # Push (value, list_index, element_index)
     for i, lst in enumerate(lists):
         if lst:
             heapq.heappush(heap, (lst[0], i, 0))
@@ -135,38 +252,72 @@ def merge_k_sorted(lists):
     while heap:
         val, list_idx, elem_idx = heapq.heappop(heap)
         result.append(val)
+        # Push next element from the same list
         if elem_idx + 1 < len(lists[list_idx]):
             next_val = lists[list_idx][elem_idx + 1]
             heapq.heappush(heap, (next_val, list_idx, elem_idx + 1))
 
     return result
 
-lists = [[1,4,5], [1,3,4], [2,6]]
-print(f"Merged: {merge_k_sorted(lists)}")`}
-  title="Merge K Sorted Lists"
-/>
+lists = [[1, 4, 5], [1, 3, 4], [2, 6]]
+print(f"Input lists: {lists}")
+print(f"Merged: {merge_k_sorted(lists)}")`} title="Merge k Sorted Lists" />
 
-## Complexity
+## Problem: Find Median from Data Stream
 
-| Operation | Time |
-|-----------|------|
-| Insert (push) | $O(\log n)$ |
-| Extract min/max | $O(\log n)$ |
-| Peek | $O(1)$ |
-| Heapify (build) | $O(n)$ |
+Use two heaps: a max-heap for the smaller half and a min-heap for the larger half. The median is always accessible from the tops of the heaps.
 
-**Why heapify is $O(n)$, not $O(n \log n)$**: Most nodes are near the bottom and need very little sifting. The sum of sift distances is bounded by $O(n)$.
+<CodePlayground code={`import heapq
 
----
+class MedianFinder:
+    def __init__(self):
+        self.lo = []   # max-heap (negated) for smaller half
+        self.hi = []   # min-heap for larger half
 
-## Key takeaways
+    def add_num(self, num):
+        # Always push to max-heap first (negated for max-heap behavior)
+        heapq.heappush(self.lo, -num)
+        # Balance: move largest of lo to hi
+        heapq.heappush(self.hi, -heapq.heappop(self.lo))
+        # Maintain size: lo can have at most 1 more than hi
+        if len(self.hi) > len(self.lo):
+            heapq.heappush(self.lo, -heapq.heappop(self.hi))
 
-1. Heap = complete binary tree with heap property, stored as an array
-2. Min-heap gives smallest element in $O(1)$, insert/extract in $O(\log n)$
-3. Python `heapq` is a min-heap; negate values for max-heap
-4. Heapify builds a heap in $O(n)$, not $O(n \log n)$
-5. Common patterns: top-K problems, merge K sorted, median stream
+    def find_median(self):
+        if len(self.lo) > len(self.hi):
+            return -self.lo[0]
+        return (-self.lo[0] + self.hi[0]) / 2
 
----
+mf = MedianFinder()
+stream = [2, 3, 4, 1, 5, 0]
+for num in stream:
+    mf.add_num(num)
+    print(f"Add {num} -> median = {mf.find_median()}")`} title="Find Median from Data Stream" />
 
-**Next:** [Tries](/docs/trees/tries)
+## Complexity Summary
+
+| Operation | Time | Notes |
+|-----------|------|-------|
+| Insert | $O(\log n)$ | Sift up at most $\log n$ levels |
+| Extract-min/max | $O(\log n)$ | Sift down at most $\log n$ levels |
+| Peek (get min/max) | $O(1)$ | Root is always min/max |
+| Heapify | $O(n)$ | Bottom-up sift-down |
+| Top $k$ elements | $O(n \log k)$ | Maintain heap of size $k$ |
+| Merge $k$ sorted lists (total $N$ elements) | $O(N \log k)$ | Heap of size $k$ |
+| Median stream (per insert) | $O(\log n)$ | Two heaps |
+
+## Common Pitfalls
+
+- **Python heapq is min-heap only** -- for max-heap behavior, negate values or use a wrapper
+- **Forgetting heapify** -- calling `heappush` $n$ times is $O(n \log n)$; use `heapify` for $O(n)$
+- **Comparing tuples** -- when heap elements are tuples, Python compares element by element; ensure the first element is the priority to avoid unexpected orderings
+- **Mutating heap elements** -- changing the priority of an element already in the heap does not automatically restore the heap property; use lazy deletion or a separate data structure
+
+## Key Takeaways
+
+- A heap gives $O(\log n)$ insert and extract-min, with $O(1)$ peek -- ideal when you repeatedly need the smallest or largest element
+- Array-based representation makes heaps cache-friendly and pointer-free
+- **Heapify** builds a heap in $O(n)$, faster than $n$ individual inserts
+- Python's `heapq` module covers most use cases; negate values for max-heap
+- The **two-heap** pattern (max-heap + min-heap) efficiently tracks the median of a stream
+- Heaps are the backbone of Dijkstra's algorithm, Huffman coding, and many scheduling problems

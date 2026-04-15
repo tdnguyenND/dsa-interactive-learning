@@ -5,14 +5,76 @@ title: "Tries"
 
 import CodePlayground from '@site/src/components/CodePlayground';
 
-# Tries (Prefix Trees)
+# Tries
 
-A trie is a tree-like data structure for storing strings where each node represents a character. It enables $O(m)$ lookup, insert, and prefix search, where $m$ is the string length.
+A **trie** (pronounced "try", from re**trie**val) is a tree-like data structure that stores strings character by character. Each node represents a single character, and the path from root to a node spells out a prefix. Tries enable $O(L)$ insert, search, and prefix lookup where $L$ is the length of the string -- independent of how many strings are stored.
 
-## Implementation
+## Structure
 
-<CodePlayground
-  code={`class TrieNode:
+A trie has the following properties:
+
+- The **root** represents the empty string
+- Each node has up to $|\Sigma|$ children (one per character in the alphabet)
+- A boolean flag marks nodes that represent the **end of a word**
+- The path from root to any end-of-word node spells a complete word
+
+For an English lowercase alphabet ($|\Sigma| = 26$), each node can have at most 26 children.
+
+## Implement a Trie
+
+<CodePlayground code={`class TrieNode:
+    def __init__(self):
+        self.children = {}      # char -> TrieNode
+        self.is_end = False     # marks end of a word
+
+class Trie:
+    def __init__(self):
+        self.root = TrieNode()
+
+    def insert(self, word):
+        """Insert a word into the trie. O(L) time."""
+        node = self.root
+        for char in word:
+            if char not in node.children:
+                node.children[char] = TrieNode()
+            node = node.children[char]
+        node.is_end = True
+
+    def search(self, word):
+        """Return True if the word is in the trie. O(L) time."""
+        node = self._find_node(word)
+        return node is not None and node.is_end
+
+    def starts_with(self, prefix):
+        """Return True if any word starts with the prefix. O(L) time."""
+        return self._find_node(prefix) is not None
+
+    def _find_node(self, prefix):
+        """Traverse trie following the prefix, return final node or None."""
+        node = self.root
+        for char in prefix:
+            if char not in node.children:
+                return None
+            node = node.children[char]
+        return node
+
+# Demo
+trie = Trie()
+words = ["apple", "app", "apricot", "bat", "ball", "band"]
+for w in words:
+    trie.insert(w)
+    print(f"Inserted: {w}")
+
+print()
+tests = ["apple", "app", "ap", "bat", "ban", "band", "car"]
+for t in tests:
+    found = trie.search(t)
+    prefix = trie.starts_with(t)
+    print(f'search("{t}") = {found:5},  startsWith("{t}") = {prefix}')`} title="Trie Implementation" />
+
+## Visualizing the Trie
+
+<CodePlayground code={`class TrieNode:
     def __init__(self):
         self.children = {}
         self.is_end = False
@@ -29,98 +91,246 @@ class Trie:
             node = node.children[char]
         node.is_end = True
 
-    def search(self, word):
-        node = self._find_node(word)
-        return node is not None and node.is_end
+    def display(self, node=None, prefix="", indent=""):
+        """Pretty-print the trie structure."""
+        if node is None:
+            node = self.root
+            print("(root)")
 
-    def starts_with(self, prefix):
-        return self._find_node(prefix) is not None
-
-    def _find_node(self, prefix):
-        node = self.root
-        for char in prefix:
-            if char not in node.children:
-                return None
-            node = node.children[char]
-        return node
+        children = sorted(node.children.items())
+        for i, (char, child) in enumerate(children):
+            is_last = (i == len(children) - 1)
+            connector = "└── " if is_last else "├── "
+            end_marker = " *" if child.is_end else ""
+            word = prefix + char
+            print(f"{indent}{connector}{char}{end_marker}")
+            next_indent = indent + ("    " if is_last else "│   ")
+            self.display(child, word, next_indent)
 
 trie = Trie()
-for word in ["apple", "app", "application", "bat", "ball"]:
+for word in ["app", "apple", "apt", "bat", "bar", "barn"]:
     trie.insert(word)
 
-print(f"search('apple'): {trie.search('apple')}")       # True
-print(f"search('app'): {trie.search('app')}")           # True
-print(f"search('appl'): {trie.search('appl')}")         # False
-print(f"starts_with('app'): {trie.starts_with('app')}") # True
-print(f"starts_with('ban'): {trie.starts_with('ban')}") # False`}
-  title="Trie Implementation"
-/>
+print("Trie structure (* marks end of word):")
+print()
+trie.display()`} title="Trie Visualization" />
 
-## Autocomplete
+## Autocomplete (Prefix Search)
 
-<CodePlayground
-  code={`class AutocompleteTrie:
+One of the most practical trie applications: given a prefix, find all words that start with it. Navigate to the prefix node, then collect all words reachable from there via DFS.
+
+<CodePlayground code={`class TrieNode:
     def __init__(self):
-        self.root = {}
+        self.children = {}
+        self.is_end = False
+
+class AutocompleteTrie:
+    def __init__(self):
+        self.root = TrieNode()
 
     def insert(self, word):
         node = self.root
-        for ch in word:
-            node = node.setdefault(ch, {})
-        node['$'] = True
+        for char in word:
+            if char not in node.children:
+                node.children[char] = TrieNode()
+            node = node.children[char]
+        node.is_end = True
 
-    def autocomplete(self, prefix, limit=5):
+    def autocomplete(self, prefix, max_results=5):
+        """Return up to max_results words starting with prefix."""
         node = self.root
-        for ch in prefix:
-            if ch not in node:
+        for char in prefix:
+            if char not in node.children:
                 return []
-            node = node[ch]
+            node = node.children[char]
 
         results = []
-        self._dfs(node, prefix, results, limit)
+        self._dfs(node, prefix, results, max_results)
         return results
 
-    def _dfs(self, node, path, results, limit):
-        if len(results) >= limit:
+    def _dfs(self, node, current, results, max_results):
+        if len(results) >= max_results:
             return
-        if '$' in node:
-            results.append(path)
-        for ch in sorted(node):
-            if ch != '$':
-                self._dfs(node[ch], path + ch, results, limit)
+        if node.is_end:
+            results.append(current)
+        for char in sorted(node.children):
+            self._dfs(node.children[char], current + char, results, max_results)
 
+# Build dictionary
 trie = AutocompleteTrie()
-words = ["apple", "app", "application", "apply", "apt", "bat", "ball"]
+words = [
+    "algorithm", "array", "application", "apple",
+    "binary", "balanced", "backtrack",
+    "cache", "compile", "constructor",
+    "data", "database", "debug", "dynamic",
+]
 for w in words:
     trie.insert(w)
 
-print(f"'app' -> {trie.autocomplete('app')}")
-print(f"'ba' -> {trie.autocomplete('ba')}")
-print(f"'z' -> {trie.autocomplete('z')}")`}
-  title="Autocomplete with Trie"
-/>
+prefixes = ["a", "al", "app", "ba", "d", "da", "x"]
+for p in prefixes:
+    completions = trie.autocomplete(p)
+    print(f'"{p}" -> {completions}')`} title="Autocomplete with Trie" />
 
-## Complexity
+## Counting Words with a Given Prefix
 
-| Operation | Time | Space |
-|-----------|------|-------|
-| Insert | $O(m)$ | $O(m)$ per word |
-| Search | $O(m)$ | — |
-| Prefix search | $O(m)$ | — |
-| Total space | — | $O(N \times m)$ worst case |
+By storing a count at each node, you can efficiently count how many words share a prefix.
 
-Where $m$ = word length, $N$ = number of words.
+<CodePlayground code={`class TrieNode:
+    def __init__(self):
+        self.children = {}
+        self.is_end = False
+        self.prefix_count = 0   # words passing through this node
+        self.word_count = 0     # words ending at this node
 
----
+class CountingTrie:
+    def __init__(self):
+        self.root = TrieNode()
 
-## Key takeaways
+    def insert(self, word):
+        node = self.root
+        for char in word:
+            if char not in node.children:
+                node.children[char] = TrieNode()
+            node = node.children[char]
+            node.prefix_count += 1
+        node.is_end = True
+        node.word_count += 1
 
-1. Trie enables $O(m)$ string operations (independent of number of stored strings)
-2. Each node stores children as a dict/array of next characters
-3. `is_end` flag marks complete words vs. prefixes
-4. Applications: autocomplete, spell check, IP routing, word search
-5. Space can be large — consider compressed tries for optimization
+    def count_prefix(self, prefix):
+        """Count words starting with the given prefix."""
+        node = self.root
+        for char in prefix:
+            if char not in node.children:
+                return 0
+            node = node.children[char]
+        return node.prefix_count
 
----
+    def count_word(self, word):
+        """Count exact occurrences of the word."""
+        node = self.root
+        for char in word:
+            if char not in node.children:
+                return 0
+            node = node.children[char]
+        return node.word_count
 
-**Next:** [Graph Representations](/docs/graphs/graph-representations)
+trie = CountingTrie()
+words = ["apple", "app", "apple", "application", "apt", "bat", "app"]
+for w in words:
+    trie.insert(w)
+
+print(f"Inserted words: {words}")
+print()
+print(f'count_prefix("app") = {trie.count_prefix("app")}')
+print(f'count_prefix("ap")  = {trie.count_prefix("ap")}')
+print(f'count_prefix("b")   = {trie.count_prefix("b")}')
+print(f'count_word("app")   = {trie.count_word("app")}')
+print(f'count_word("apple") = {trie.count_word("apple")}')`} title="Counting Prefixes and Words" />
+
+## Word Search in a Grid
+
+A common interview problem: given a 2D board of characters and a list of words, find all words that can be formed by traversing adjacent cells (up/down/left/right, each cell used at most once). A trie prunes the search space dramatically -- if no word starts with the current path, stop exploring.
+
+<CodePlayground code={`class TrieNode:
+    def __init__(self):
+        self.children = {}
+        self.word = None  # store the full word at end nodes
+
+def find_words(board, words):
+    """Find all words from the list that exist in the board."""
+    # Build trie from word list
+    root = TrieNode()
+    for word in words:
+        node = root
+        for char in word:
+            if char not in node.children:
+                node.children[char] = TrieNode()
+            node = node.children[char]
+        node.word = word
+
+    rows, cols = len(board), len(board[0])
+    found = set()
+
+    def dfs(r, c, node):
+        if r < 0 or r >= rows or c < 0 or c >= cols:
+            return
+        char = board[r][c]
+        if char not in node.children:
+            return
+
+        next_node = node.children[char]
+        if next_node.word:
+            found.add(next_node.word)
+
+        # Mark visited
+        board[r][c] = '#'
+        for dr, dc in [(0,1),(0,-1),(1,0),(-1,0)]:
+            dfs(r + dr, c + dc, next_node)
+        board[r][c] = char  # restore
+
+        # Prune: remove leaf nodes to speed up future searches
+        if not next_node.children:
+            del node.children[char]
+
+    for r in range(rows):
+        for c in range(cols):
+            dfs(r, c, root)
+
+    return sorted(found)
+
+board = [
+    ['o','a','a','n'],
+    ['e','t','a','e'],
+    ['i','h','k','r'],
+    ['i','f','l','v']
+]
+words = ["oath", "pea", "eat", "rain", "oat", "eta", "athe"]
+
+print("Board:")
+for row in board:
+    print(f"  {row}")
+print(f"\\nWord list: {words}")
+print(f"Found: {find_words(board, words)}")`} title="Word Search II (Trie + DFS)" />
+
+## Space Analysis
+
+A trie storing $N$ words of average length $L$ over an alphabet of size $|\Sigma|$:
+
+| Aspect | Hash Map Children | Array Children |
+|--------|-------------------|----------------|
+| Node space | $O(|\Sigma|)$ average | $O(|\Sigma|)$ always |
+| Total nodes (worst case) | $O(N \cdot L)$ | $O(N \cdot L)$ |
+| Total space | $O(N \cdot L)$ | $O(N \cdot L \cdot |\Sigma|)$ |
+| Lookup per char | $O(1)$ average (hash) | $O(1)$ guaranteed (array) |
+
+Using a hash map (`dict`) for children, as in the Python implementations above, is space-efficient because it only allocates entries for characters that actually appear. Using a fixed-size array (e.g., `[None] * 26`) gives guaranteed $O(1)$ child lookup but wastes space on sparse nodes.
+
+**Compared to hash sets**: A hash set storing the same words uses $O(N \cdot L)$ space and gives $O(L)$ lookup, but cannot efficiently answer prefix queries. A trie trades moderate extra space for fast prefix operations.
+
+## Complexity Summary
+
+| Operation | Time | Space per Node |
+|-----------|------|---------------|
+| Insert | $O(L)$ | $O(|\Sigma|)$ worst case |
+| Search (exact) | $O(L)$ | -- |
+| Prefix check | $O(L)$ | -- |
+| Autocomplete ($k$ results) | $O(L + k)$ | -- |
+| Build trie ($N$ words, avg length $L$) | $O(N \cdot L)$ | $O(N \cdot L)$ total |
+| Word Search II ($R \times C$ board, $N$ words) | $O(R \cdot C \cdot 4^L)$ | $O(N \cdot L)$ for trie |
+
+## Common Pitfalls
+
+- **Confusing search and startsWith** -- `search("app")` returns `False` if only "apple" was inserted, but `startsWith("app")` returns `True`
+- **Not marking end-of-word** -- without the `is_end` flag, you cannot distinguish between a stored word and a prefix of another word
+- **Memory explosion** -- tries can use significantly more memory than hash sets for the same data; consider compressed tries (Patricia/radix tries) for production use
+- **Forgetting to restore state** -- in backtracking problems like Word Search, always restore the board cell after DFS returns
+
+## Key Takeaways
+
+- Tries provide $O(L)$ insert, search, and prefix operations -- the time depends only on string length, not the number of stored strings
+- The primary advantage over hash maps is **prefix-based queries**: autocomplete, prefix counting, and finding all words with a common prefix
+- Tries excel in problems combining string matching with search/backtracking (e.g., Word Search II, Boggle)
+- Use a **dict** for children in Python for space efficiency; use a fixed array only when the alphabet is small and known
+- The **counting trie** variant (tracking prefix counts) is useful for problems that ask "how many words start with X"
+- For large-scale production systems, compressed tries (radix trees) reduce memory by merging single-child chains

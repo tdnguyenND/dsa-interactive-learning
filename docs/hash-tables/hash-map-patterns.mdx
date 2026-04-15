@@ -7,43 +7,84 @@ import CodePlayground from '@site/src/components/CodePlayground';
 
 # Hash Map Patterns
 
-Hash maps (dictionaries) are the workhorse of DSA problem-solving. Here are the most common patterns.
+Hash maps enable $O(1)$ average-case lookups, making them the go-to data structure for a wide range of algorithmic patterns. This page covers the most common hash map patterns you will encounter in coding interviews.
 
-## Pattern 1: Frequency counting
+## Pattern 1: Frequency Counting
 
-Count occurrences and use the counts to make decisions.
+**When to use**: Count occurrences of elements, find the most/least frequent, check if two collections have the same distribution.
+
+**Template**: Build a frequency map, then query it.
 
 <CodePlayground
   code={`from collections import Counter
 
-def is_anagram(s, t):
-    return Counter(s) == Counter(t)
+def top_k_frequent(nums, k):
+    """Find the k most frequent elements.
+    Time: O(n), Space: O(n) — uses bucket sort by frequency"""
+    count = Counter(nums)
+    n = len(nums)
+    buckets = [[] for _ in range(n + 1)]
+    for num, freq in count.items():
+        buckets[freq].append(num)
+
+    result = []
+    for freq in range(n, 0, -1):
+        for num in buckets[freq]:
+            result.append(num)
+            if len(result) == k:
+                return result
+    return result
+
+print(top_k_frequent([1,1,1,2,2,3], 2))  # [1, 2]
+print(top_k_frequent([1], 1))             # [1]`}
+  title="Top K Frequent Elements"
+/>
+
+<CodePlayground
+  code={`def is_anagram(s, t):
+    """Check if t is an anagram of s.
+    Time: O(n), Space: O(1) — at most 26 letters"""
+    if len(s) != len(t):
+        return False
+    freq = {}
+    for c in s:
+        freq[c] = freq.get(c, 0) + 1
+    for c in t:
+        freq[c] = freq.get(c, 0) - 1
+        if freq[c] < 0:
+            return False
+    return True
+
+print(is_anagram("anagram", "nagaram"))  # True
+print(is_anagram("rat", "car"))          # False
 
 def first_unique_char(s):
-    freq = Counter(s)
-    for i, ch in enumerate(s):
-        if freq[ch] == 1:
+    """Find the index of the first non-repeating character.
+    Time: O(n), Space: O(1)"""
+    freq = {}
+    for c in s:
+        freq[c] = freq.get(c, 0) + 1
+    for i, c in enumerate(s):
+        if freq[c] == 1:
             return i
     return -1
 
-def top_k_frequent(nums, k):
-    freq = Counter(nums)
-    return [x for x, _ in freq.most_common(k)]
-
-print(is_anagram("anagram", "nagaram"))          # True
-print(first_unique_char("leetcode"))              # 0
-print(top_k_frequent([1,1,1,2,2,3], 2))         # [1, 2]`}
-  title="Frequency Counting"
+print(first_unique_char("leetcode"))     # 0 ('l')
+print(first_unique_char("aabb"))         # -1`}
+  title="Frequency Counting Basics"
 />
 
-## Pattern 2: Complement lookup (Two Sum)
+## Pattern 2: Complement Lookup (Two Sum Pattern)
 
-Store seen values and check for complements.
+**When to use**: Find pairs/groups that satisfy a condition. Instead of checking all pairs in $O(n^2)$, store seen elements and look up the complement in $O(1)$.
+
+**Key insight**: For each element $x$, check if `target - x` is already in the map.
 
 <CodePlayground
   code={`def two_sum(nums, target):
-    """O(n) using hash map for complement lookup"""
-    seen = {}
+    """Find indices of two numbers that sum to target.
+    Time: O(n), Space: O(n)"""
+    seen = {}  # value -> index
     for i, num in enumerate(nums):
         complement = target - num
         if complement in seen:
@@ -51,24 +92,59 @@ Store seen values and check for complements.
         seen[num] = i
     return []
 
+print(two_sum([2, 7, 11, 15], 9))   # [0, 1]
+print(two_sum([3, 2, 4], 6))        # [1, 2]
+
+def two_sum_count(nums, target):
+    """Count pairs that sum to target.
+    Time: O(n), Space: O(n)"""
+    seen = {}
+    count = 0
+    for num in nums:
+        complement = target - num
+        if complement in seen:
+            count += seen[complement]
+        seen[num] = seen.get(num, 0) + 1
+    return count
+
+print(two_sum_count([1, 5, 7, -1, 5], 6))  # 3 (1+5, 1+5, 7+-1)
+print(two_sum_count([1, 1, 1, 1], 2))       # 6`}
+  title="Two Sum and Complement Lookup"
+/>
+
+### Extended: Four Sum Count using hash map
+
+<CodePlayground
+  code={`from collections import Counter
+
 def four_sum_count(A, B, C, D):
-    """Count tuples (i,j,k,l) where A[i]+B[j]+C[k]+D[l]=0"""
+    """Count tuples (i,j,k,l) where A[i]+B[j]+C[k]+D[l] = 0.
+    Split into two groups of two arrays.
+    Time: O(n^2), Space: O(n^2)"""
     ab_sums = Counter(a + b for a in A for b in B)
     return sum(ab_sums.get(-(c + d), 0) for c in C for d in D)
 
-from collections import Counter
-print(two_sum([2, 7, 11, 15], 9))  # [0, 1]`}
-  title="Complement Lookup"
+A = [1, 2]
+B = [-2, -1]
+C = [-1, 2]
+D = [0, 2]
+print(f"Four sum count: {four_sum_count(A, B, C, D)}")  # 2`}
+  title="Four Sum Count"
 />
 
 ## Pattern 3: Grouping
 
-Group items by a computed key.
+**When to use**: Group elements by some shared property (e.g., anagrams, same remainder, same pattern).
+
+**Template**: Compute a **hashable key** for each element and collect elements by key.
 
 <CodePlayground
   code={`from collections import defaultdict
 
 def group_anagrams(strs):
+    """Group strings that are anagrams of each other.
+    Key: sorted string (or character frequency tuple).
+    Time: O(n * k log k) where k = max string length"""
     groups = defaultdict(list)
     for s in strs:
         key = tuple(sorted(s))
@@ -77,94 +153,250 @@ def group_anagrams(strs):
 
 result = group_anagrams(["eat","tea","tan","ate","nat","bat"])
 for group in result:
-    print(group)`}
-  title="Grouping Pattern"
+    print(sorted(group))
+
+print()
+
+def group_anagrams_fast(strs):
+    """O(n * k) version using character count as key."""
+    groups = defaultdict(list)
+    for s in strs:
+        count = [0] * 26
+        for c in s:
+            count[ord(c) - ord('a')] += 1
+        groups[tuple(count)].append(s)
+    return list(groups.values())
+
+result = group_anagrams_fast(["eat","tea","tan","ate","nat","bat"])
+for group in result:
+    print(sorted(group))`}
+  title="Group Anagrams"
 />
 
-## Pattern 4: Prefix sum + hash map
+<CodePlayground
+  code={`def group_by_remainder(nums, k):
+    """Group numbers by their remainder when divided by k."""
+    groups = {}
+    for num in nums:
+        r = num % k
+        if r not in groups:
+            groups[r] = []
+        groups[r].append(num)
+    return groups
 
-Combine prefix sums with hash maps for subarray problems.
+result = group_by_remainder([1, 2, 3, 4, 5, 6, 7, 8, 9], 3)
+for r, nums in sorted(result.items()):
+    print(f"  remainder {r}: {nums}")
+
+def isomorphic_strings(s, t):
+    """Check if s and t have the same character pattern.
+    Map each char to its first occurrence position."""
+    def pattern(word):
+        mapping = {}
+        return tuple(mapping.setdefault(c, len(mapping)) for c in word)
+    return pattern(s) == pattern(t)
+
+print(isomorphic_strings("egg", "add"))     # True
+print(isomorphic_strings("foo", "bar"))     # False
+print(isomorphic_strings("paper", "title")) # True`}
+  title="Grouping by Shared Property"
+/>
+
+## Pattern 4: Prefix Sum + Hash Map
+
+**When to use**: Find subarrays with a given sum, count subarrays with property X. The hash map stores prefix sums seen so far.
+
+**Key insight**: If $\text{prefix}[j] - \text{prefix}[i] = k$, then the subarray from index $i+1$ to $j$ sums to $k$. So for each prefix sum, check if `prefix_sum - k` was seen before.
 
 <CodePlayground
-  code={`def subarray_sum(nums, k):
-    """Count subarrays summing to k — O(n)"""
+  code={`def subarray_sum_count(nums, k):
+    """Count subarrays that sum to k.
+    Time: O(n), Space: O(n)"""
     count = 0
     prefix = 0
-    seen = {0: 1}
+    seen = {0: 1}  # prefix sum 0 occurs once (empty prefix)
+
     for num in nums:
         prefix += num
-        count += seen.get(prefix - k, 0)
+        # If prefix - k was seen, those positions are valid starts
+        if prefix - k in seen:
+            count += seen[prefix - k]
         seen[prefix] = seen.get(prefix, 0) + 1
+
     return count
 
-def longest_subarray_sum_k(nums, k):
-    """Longest subarray with sum = k"""
+print(subarray_sum_count([1, 1, 1], 2))        # 2
+print(subarray_sum_count([1, 2, 3], 3))         # 2 ([1,2] and [3])
+print(subarray_sum_count([1, -1, 0], 0))        # 3`}
+  title="Subarray Sum Equals K"
+/>
+
+<CodePlayground
+  code={`def longest_subarray_sum_k(nums, k):
+    """Find the length of the longest subarray summing to k.
+    Store the FIRST occurrence of each prefix sum."""
     prefix = 0
-    first_seen = {0: -1}
+    first_seen = {0: -1}  # prefix 0 at index -1
     max_len = 0
+
     for i, num in enumerate(nums):
         prefix += num
         if prefix - k in first_seen:
             max_len = max(max_len, i - first_seen[prefix - k])
+        # Only store first occurrence for longest subarray
         if prefix not in first_seen:
             first_seen[prefix] = i
+
     return max_len
 
-print(f"Count subarrays sum=2: {subarray_sum([1,1,1], 2)}")           # 2
-print(f"Longest subarray sum=3: {longest_subarray_sum_k([1,-1,5,-2,3], 3)}")  # 4`}
-  title="Prefix Sum + Hash Map"
+print(longest_subarray_sum_k([1, -1, 5, -2, 3], 3))   # 4 ([1,-1,5,-2])
+print(longest_subarray_sum_k([-2, -1, 2, 1], 1))       # 2
+
+def subarrays_div_by_k(nums, k):
+    """Count subarrays whose sum is divisible by k.
+    Key: if two prefix sums have the same remainder mod k,
+    the subarray between them is divisible by k."""
+    count = 0
+    prefix = 0
+    remainder_count = {0: 1}
+
+    for num in nums:
+        prefix += num
+        r = prefix % k
+        if r in remainder_count:
+            count += remainder_count[r]
+        remainder_count[r] = remainder_count.get(r, 0) + 1
+
+    return count
+
+print(subarrays_div_by_k([4, 5, 0, -2, -3, 1], 5))  # 7`}
+  title="Prefix Sum + Hash Map Variants"
 />
 
-## Pattern 5: Sliding window + hash map
+## Pattern 5: Sliding Window + Hash Map
 
-Track character/element counts within a window.
+**When to use**: Find substrings/subarrays satisfying a frequency-based condition (e.g., no repeating characters, at most $k$ distinct characters, contains all characters of a target).
+
+**Template**: Expand the window by moving the right pointer, update the hash map, shrink from the left when the condition is violated.
 
 <CodePlayground
   code={`def length_of_longest_substring(s):
-    """Longest substring without repeating characters"""
-    seen = {}
-    left = max_len = 0
+    """Longest substring without repeating characters.
+    Time: O(n), Space: O(min(n, alphabet_size))"""
+    last_seen = {}  # char -> last index
+    max_len = 0
+    left = 0
+
     for right, ch in enumerate(s):
-        if ch in seen and seen[ch] >= left:
-            left = seen[ch] + 1
-        seen[ch] = right
+        if ch in last_seen and last_seen[ch] >= left:
+            left = last_seen[ch] + 1
+        last_seen[ch] = right
         max_len = max(max_len, right - left + 1)
+
     return max_len
 
-def character_replacement(s, k):
-    """Longest substring with at most k replacements to make all same char"""
-    count = {}
-    left = max_len = max_freq = 0
-    for right, ch in enumerate(s):
-        count[ch] = count.get(ch, 0) + 1
-        max_freq = max(max_freq, count[ch])
-        while (right - left + 1) - max_freq > k:
-            count[s[left]] -= 1
-            left += 1
-        max_len = max(max_len, right - left + 1)
-    return max_len
-
-print(length_of_longest_substring("abcabcbb"))    # 3
-print(character_replacement("AABABBA", 1))         # 4`}
-  title="Sliding Window + Hash Map"
+print(length_of_longest_substring("abcabcbb"))  # 3 ("abc")
+print(length_of_longest_substring("bbbbb"))      # 1 ("b")
+print(length_of_longest_substring("pwwkew"))     # 3 ("wke")`}
+  title="Longest Substring Without Repeating Characters"
 />
 
-## When to use a hash map
+<CodePlayground
+  code={`def min_window(s, t):
+    """Minimum window substring containing all chars of t.
+    Time: O(n), Space: O(k) where k = distinct chars in t"""
+    from collections import Counter
+    need = Counter(t)
+    missing = len(t)  # total chars still needed
+    left = 0
+    best = (0, float('inf'))  # (start, end)
 
-| Signal | Pattern |
-|--------|---------|
-| "Find pair that sums to X" | Complement lookup |
-| "Count occurrences" | Frequency counting |
-| "Group by property" | Grouping |
-| "Subarray sum equals K" | Prefix sum + hash map |
-| "Longest substring with condition" | Sliding window + hash map |
+    for right, ch in enumerate(s):
+        if need[ch] > 0:
+            missing -= 1
+        need[ch] -= 1
 
----
+        # Shrink window while valid
+        while missing == 0:
+            if right - left < best[1] - best[0]:
+                best = (left, right)
+            need[s[left]] += 1
+            if need[s[left]] > 0:
+                missing += 1
+            left += 1
+
+    start, end = best
+    return s[start:end + 1] if end < float('inf') else ""
+
+print(min_window("ADOBECODEBANC", "ABC"))  # "BANC"
+print(min_window("a", "a"))                # "a"
+print(min_window("a", "aa"))               # ""`}
+  title="Minimum Window Substring"
+/>
+
+<CodePlayground
+  code={`def longest_k_distinct(s, k):
+    """Longest substring with at most k distinct characters.
+    Time: O(n), Space: O(k)"""
+    freq = {}
+    left = 0
+    max_len = 0
+
+    for right, ch in enumerate(s):
+        freq[ch] = freq.get(ch, 0) + 1
+
+        while len(freq) > k:
+            left_ch = s[left]
+            freq[left_ch] -= 1
+            if freq[left_ch] == 0:
+                del freq[left_ch]
+            left += 1
+
+        max_len = max(max_len, right - left + 1)
+
+    return max_len
+
+print(longest_k_distinct("eceba", 2))        # 3 ("ece")
+print(longest_k_distinct("aabacbebebe", 3))  # 7 ("cbebebe")`}
+  title="Longest Substring with K Distinct Characters"
+/>
+
+## Pattern comparison
+
+| Pattern | Hash Map Role | Typical Time | Typical Space |
+|---------|---------------|-------------|---------------|
+| **Frequency counting** | Count occurrences | $O(n)$ | $O(k)$ |
+| **Complement lookup** | Store seen values for $O(1)$ pair check | $O(n)$ | $O(n)$ |
+| **Grouping** | Collect elements by computed key | $O(n \cdot f)$ | $O(n)$ |
+| **Prefix sum + hash** | Store prefix sums to find subarray sums | $O(n)$ | $O(n)$ |
+| **Sliding window + hash** | Track frequencies in current window | $O(n)$ | $O(k)$ |
+
+Where $k$ is the number of distinct keys and $f$ is the cost of computing the grouping key.
+
+## How to choose the right pattern
+
+| Signal in the problem | Pattern |
+|----------------------|---------|
+| "Count occurrences" or "most/least frequent" | **Frequency counting** |
+| "Find pair/tuple that sums to X" | **Complement lookup** |
+| "Group by property" or "find all anagrams" | **Grouping** |
+| "Count/find subarrays with sum = k" | **Prefix sum + hash map** |
+| "Longest substring with condition" | **Sliding window + hash map** |
+| "Check if permutation exists in string" | **Sliding window + hash map** |
+
+## Common mistakes
+
+1. **Forgetting to initialize prefix sum map with `{0: 1}`** --- this accounts for subarrays starting at index 0.
+2. **Using a mutable key** (like a list) in a hash map --- use tuples or frozensets instead.
+3. **Not handling negative numbers** in prefix sum problems --- remainders can be negative in some languages (Python handles this correctly with `%`).
+4. **Off-by-one in sliding window** --- make sure `left` is updated correctly when shrinking.
+5. **Storing last occurrence instead of first** when finding the longest subarray --- for longest, store the first occurrence; for shortest, store the last.
 
 ## Key takeaways
 
-1. Hash maps turn $O(n)$ lookups into $O(1)$ — the core speedup
-2. **Frequency counting** is the simplest and most common pattern
-3. **Complement lookup** (two sum) generalizes to many "find pair" problems
-4. **Prefix sum + hash map** solves subarray sum problems in $O(n)$
-5. Always think: "Can I store something now and look it up later?"
+1. **Frequency counting** is the simplest pattern: build a counter, then query it. Use `collections.Counter` in Python.
+2. **Complement lookup** (Two Sum pattern) reduces $O(n^2)$ pair search to $O(n)$ by storing seen values and checking for complements.
+3. **Grouping** requires designing a **hashable key** that captures the shared property --- sorted string, frequency tuple, or remainder.
+4. **Prefix sum + hash map** is the key technique for subarray sum problems: store prefix sums and look up `prefix - target`.
+5. **Sliding window + hash map** handles substring/subarray problems with frequency constraints: expand right, shrink left, track frequencies in the map.
+6. When you see "find subarray/substring with property X" --- think prefix sum + hash map for sum-based properties, or sliding window + hash map for frequency-based constraints.
